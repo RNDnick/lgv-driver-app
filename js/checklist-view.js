@@ -3,20 +3,34 @@ import { startCamera, stopCamera, captureFrame, wireTorchButton } from './camera
 import { newId } from './db.js';
 import * as sync from './sync.js';
 import { hashBlob, isNearDuplicate } from './photo-hash.js';
+import { createSubRouter } from './subrouter.js';
+import { setLeaveGuard, clearLeaveGuard } from './nav-guard.js';
 
 export async function renderChecklistFlow(root, type, { onExit } = {}) {
   const steps = getSteps(type);
   let trailerReg = '';
   let jobId = '';
-  let stepIndex = 0;
   let stream = null;
-  const captures = []; // { key, title, completedAt, photo }
+  const captures = []; // confirmed steps only, in order: { key, title, completedAt, photo, photoHash }
 
   const openJobs = (await sync.getMergedJobs()).filter(j => j.status === 'open');
+  const sub = createSubRouter(type);
+
+  setLeaveGuard(() => captures.length === 0 || window.confirm(
+    `Discard this checklist? You've already captured ${captures.length} of ${steps.length} photos.`
+  ));
 
   function cleanupCamera() {
     stopCamera(stream);
     stream = null;
+  }
+
+  // Total history entries pushed since Home, for a given step index: this
+  // view's own pushes for indices 0..index (index+1 of them) plus app.js's
+  // one initial push into this flow. Used to jump straight back to Home from
+  // deep in the flow, rather than the single-level history.back() elsewhere.
+  function depthAt(index) {
+    return index + 2;
   }
 
   function renderSetup() {
@@ -50,17 +64,23 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
       trailerReg = value;
       const sel = root.querySelector('#jobSelect');
       jobId = sel ? sel.value : '';
-      stepIndex = 0;
-      renderStep();
+      sub.push({ index: 0 });
+      renderStepOrReview(0);
     };
     root.querySelector('#backBtn').onclick = () => onExit && onExit();
   }
 
-  async function renderStep() {
-    const step = steps[stepIndex];
+  function renderStepOrReview(index) {
+    if (index >= steps.length) return renderSummary(index);
+    if (index < captures.length) return renderReviewScreen(index, captures[index], true);
+    return renderCameraScreen(index);
+  }
+
+  async function renderCameraScreen(index) {
+    const step = steps[index];
     root.innerHTML = `
       <div class="screen">
-        <div class="step-progress">Step ${stepIndex + 1} of ${steps.length}</div>
+        <div class="step-progress">Step ${index + 1} of ${steps.length}</div>
         <h2>${step.key} — ${step.title}</h2>
         <p class="instruction">${step.instruction}</p>
         <div class="camera-wrap">
@@ -87,28 +107,30 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
     captureBtn.onclick = async () => {
       const photo = await captureFrame(videoEl);
       cleanupCamera();
-      renderReview(step, photo);
+      const photoHash = await hashBlob(photo);
+      renderReviewScreen(index, { key: step.key, title: step.title, completedAt: Date.now(), photo, photoHash }, false);
     };
-    root.querySelector('#backBtn').onclick = () => { cleanupCamera(); onExit && onExit(); };
+    root.querySelector('#backBtn').onclick = () => { cleanupCamera(); history.back(); };
   }
 
-  async function renderReview(step, photo) {
-    const url = URL.createObjectURL(photo);
-    const photoHash = await hashBlob(photo);
-
-    // Kingpin, clip, airlines, legs and brake are physically distinct - any two
-    // of them looking near-identical within the same checklist is a much
-    // stronger signal than the cross-day check below, which only compares a
-    // step against *other checklists'* photos for that same step.
-    const withinChecklistMatch = captures.find(c => isNearDuplicate(c.photoHash, photoHash));
-    const priorHashes = await sync.getTodaysStepHashes(step.key);
-    const isDuplicateAcrossDays = priorHashes.some(h => isNearDuplicate(h, photoHash));
-
+  async function renderReviewScreen(index, capture, isRedisplay) {
+    const step = steps[index];
+    const url = URL.createObjectURL(capture.photo);
     let warning = '';
-    if (withinChecklistMatch) {
-      warning = `This looks like the same photo as your ${withinChecklistMatch.title} photo, already taken in this checklist. Each step needs its own genuine photo.`;
-    } else if (isDuplicateAcrossDays) {
-      warning = `This looks very similar to another ${step.title} photo already taken today. Make sure this is a genuinely new photo before confirming.`;
+
+    if (!isRedisplay) {
+      // Kingpin, clip, airlines, legs and brake are physically distinct - any two
+      // of them looking near-identical within the same checklist is a much
+      // stronger signal than the cross-day check below, which only compares a
+      // step against *other checklists'* photos for that same step.
+      const withinChecklistMatch = captures.find(c => isNearDuplicate(c.photoHash, capture.photoHash));
+      const priorHashes = await sync.getTodaysStepHashes(step.key);
+      const isDuplicateAcrossDays = priorHashes.some(h => isNearDuplicate(h, capture.photoHash));
+      if (withinChecklistMatch) {
+        warning = `This looks like the same photo as your ${withinChecklistMatch.title} photo, already taken in this checklist. Each step needs its own genuine photo.`;
+      } else if (isDuplicateAcrossDays) {
+        warning = `This looks very similar to another ${step.title} photo already taken today. Make sure this is a genuinely new photo before confirming.`;
+      }
     }
 
     root.innerHTML = `
@@ -116,23 +138,20 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
         <h2>${step.key} — ${step.title}</h2>
         <img src="${url}" class="photo-preview" alt="Captured evidence for ${step.title}" />
         ${warning ? `<p class="warning">${warning}</p>` : ''}
-        <button id="confirmBtn" class="btn-primary btn-large">✔ Confirm</button>
+        <button id="confirmBtn" class="btn-primary btn-large">${isRedisplay ? '✔ Continue' : '✔ Confirm'}</button>
         <button id="retakeBtn" class="btn-secondary">Retake</button>
       </div>
     `;
     root.querySelector('#confirmBtn').onclick = () => {
-      captures.push({ key: step.key, title: step.title, completedAt: Date.now(), photo, photoHash });
-      stepIndex += 1;
-      if (stepIndex < steps.length) {
-        renderStep();
-      } else {
-        renderSummary();
-      }
+      captures[index] = capture;
+      const nextIndex = index + 1;
+      sub.push({ index: nextIndex });
+      renderStepOrReview(nextIndex);
     };
-    root.querySelector('#retakeBtn').onclick = () => renderStep();
+    root.querySelector('#retakeBtn').onclick = () => renderCameraScreen(index);
   }
 
-  function renderSummary() {
+  function renderSummary(index) {
     root.innerHTML = `
       <div class="screen">
         <h2>${getLabel(type)} — Complete</h2>
@@ -161,12 +180,28 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
       };
       const photos = Object.fromEntries(captures.map(c => [c.key, c.photo]));
       await sync.enqueue('checklist', record, photos);
-      onExit && onExit();
+      clearLeaveGuard();
+      history.go(-depthAt(index));
     };
-    root.querySelector('#discardBtn').onclick = () => onExit && onExit();
+    root.querySelector('#discardBtn').onclick = () => {
+      clearLeaveGuard();
+      history.go(-depthAt(index));
+    };
   }
+
+  sub.onPop(screen => {
+    if (screen && typeof screen.index === 'number') {
+      renderStepOrReview(screen.index);
+    } else {
+      renderSetup();
+    }
+  });
 
   renderSetup();
 
-  return () => cleanupCamera();
+  return () => {
+    cleanupCamera();
+    clearLeaveGuard();
+    sub.destroy();
+  };
 }

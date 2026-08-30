@@ -3,13 +3,34 @@ import * as sync from './sync.js';
 import * as backend from './backend.js';
 import { startCamera, stopCamera, captureFrame, wireTorchButton } from './camera.js';
 import { hashBlob, isNearDuplicate } from './photo-hash.js';
+import { createSubRouter } from './subrouter.js';
 
 function fmtDate(ts) {
   return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export async function renderJobLog(root, { onExit } = {}) {
+  const sub = createSubRouter('joblog');
+  let activeScreen = { screen: null };
+  let skipNextGuard = false;
+  let hasCapturedPod = false;
+
+  async function findJob(id) {
+    return (await sync.getMergedJobs()).find(j => j.id === id);
+  }
+
+  function hasFormData() {
+    return ['customer', 'collectionSite', 'deliverySite', 'trailerReg', 'mileageStart', 'notes']
+      .some(id => (root.querySelector('#' + id)?.value || '').trim() !== '');
+  }
+
+  function hasCompleteProgress() {
+    const mileageInput = root.querySelector('#mileageEnd');
+    return hasCapturedPod || (mileageInput && mileageInput.value.trim() !== '');
+  }
+
   async function renderList() {
+    activeScreen = { screen: null };
     const jobs = await sync.getMergedJobs();
     root.innerHTML = `
       <div class="screen">
@@ -31,14 +52,21 @@ export async function renderJobLog(root, { onExit } = {}) {
         <button id="backBtn" class="btn-secondary">Back</button>
       </div>
     `;
-    root.querySelector('#newJobBtn').onclick = () => renderForm();
+    root.querySelector('#newJobBtn').onclick = () => {
+      sub.push({ screen: 'form' });
+      renderForm();
+    };
     root.querySelectorAll('.list-item').forEach(el => {
-      el.onclick = () => renderDetail(jobs.find(j => j.id === el.dataset.id));
+      el.onclick = () => {
+        sub.push({ screen: 'detail', id: el.dataset.id });
+        renderDetail(jobs.find(j => j.id === el.dataset.id));
+      };
     });
     root.querySelector('#backBtn').onclick = () => onExit && onExit();
   }
 
   function renderForm() {
+    activeScreen = { screen: 'form' };
     root.innerHTML = `
       <div class="screen">
         <h2>New Job</h2>
@@ -74,12 +102,18 @@ export async function renderJobLog(root, { onExit } = {}) {
         completedAt: null,
       };
       await sync.enqueue('job', job, {});
-      renderList();
+      skipNextGuard = true;
+      history.back();
     };
-    root.querySelector('#cancelBtn').onclick = () => renderList();
+    root.querySelector('#cancelBtn').onclick = () => {
+      if (hasFormData() && !window.confirm('Discard this new job? The details you entered will be lost.')) return;
+      skipNextGuard = true;
+      history.back();
+    };
   }
 
   async function renderDetail(job) {
+    activeScreen = { screen: 'detail', id: job.id };
     let photoUrl = null;
     if (job.pending && job._photos && job._photos.pod) {
       photoUrl = URL.createObjectURL(job._photos.pod);
@@ -102,7 +136,10 @@ export async function renderJobLog(root, { onExit } = {}) {
       </div>
     `;
     if (job.status === 'open') {
-      root.querySelector('#completeBtn').onclick = () => renderComplete(job);
+      root.querySelector('#completeBtn').onclick = () => {
+        sub.push({ screen: 'complete', id: job.id });
+        renderComplete(job);
+      };
     }
     root.querySelector('#deleteBtn').onclick = async () => {
       if (job.pending) {
@@ -110,12 +147,15 @@ export async function renderJobLog(root, { onExit } = {}) {
       } else {
         await backend.deleteJob(job.id);
       }
-      renderList();
+      skipNextGuard = true;
+      history.back();
     };
-    root.querySelector('#backBtn').onclick = () => renderList();
+    root.querySelector('#backBtn').onclick = () => history.back();
   }
 
   async function renderComplete(job) {
+    activeScreen = { screen: 'complete', id: job.id };
+    hasCapturedPod = false;
     let stream = null;
     root.innerHTML = `
       <div class="screen">
@@ -153,7 +193,8 @@ export async function renderJobLog(root, { onExit } = {}) {
         podPhotoHash: photoHash || jobFields.podPhotoHash || null,
       };
       await sync.enqueue('job', updated, photo ? { pod: photo } : {});
-      renderList();
+      skipNextGuard = true;
+      history.back();
     }
 
     async function renderPodReview(photo, mileageEndValue) {
@@ -177,6 +218,7 @@ export async function renderJobLog(root, { onExit } = {}) {
     captureBtn.onclick = async () => {
       const mileageEndValue = root.querySelector('#mileageEnd').value || null;
       const photo = await captureFrame(videoEl);
+      hasCapturedPod = true;
       stopCamera(stream);
       renderPodReview(photo, mileageEndValue);
     };
@@ -185,8 +227,39 @@ export async function renderJobLog(root, { onExit } = {}) {
       stopCamera(stream);
       finish(null, null, mileageEndValue);
     };
-    root.querySelector('#cancelBtn').onclick = () => { stopCamera(stream); renderDetail(job); };
+    root.querySelector('#cancelBtn').onclick = () => {
+      if (hasCompleteProgress() && !window.confirm('Discard this delivery photo and mileage?')) return;
+      stopCamera(stream);
+      skipNextGuard = true;
+      history.back();
+    };
   }
 
+  sub.onPop(screen => {
+    const previous = activeScreen;
+    if (!skipNextGuard) {
+      if (previous.screen === 'form' && hasFormData() && !window.confirm('Discard this new job? The details you entered will be lost.')) {
+        sub.push(previous);
+        return;
+      }
+      if (previous.screen === 'complete' && hasCompleteProgress() && !window.confirm('Discard this delivery photo and mileage?')) {
+        sub.push(previous);
+        return;
+      }
+    }
+    skipNextGuard = false;
+    if (screen && screen.screen === 'detail') {
+      findJob(screen.id).then(job => (job ? renderDetail(job) : renderList()));
+    } else if (screen && screen.screen === 'complete') {
+      findJob(screen.id).then(job => (job ? renderComplete(job) : renderList()));
+    } else if (screen && screen.screen === 'form') {
+      renderForm();
+    } else {
+      renderList();
+    }
+  });
+
   renderList();
+
+  return () => sub.destroy();
 }

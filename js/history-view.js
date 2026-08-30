@@ -1,6 +1,7 @@
 import * as sync from './sync.js';
 import * as backend from './backend.js';
 import { getLabel } from './checklists-data.js';
+import { createSubRouter } from './subrouter.js';
 
 function fmtDate(ts) {
   return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -8,6 +9,7 @@ function fmtDate(ts) {
 
 export async function renderHistory(root, { onExit, initialRecordId } = {}) {
   const records = await sync.getMergedChecklists();
+  const sub = createSubRouter('history');
 
   function renderList() {
     root.innerHTML = `
@@ -29,7 +31,10 @@ export async function renderHistory(root, { onExit, initialRecordId } = {}) {
       </div>
     `;
     root.querySelectorAll('.list-item').forEach(el => {
-      el.onclick = () => renderDetail(records.find(r => r.id === el.dataset.id));
+      el.onclick = () => {
+        sub.push({ screen: 'detail', id: el.dataset.id });
+        renderDetail(records.find(r => r.id === el.dataset.id));
+      };
     });
     root.querySelector('#backBtn').onclick = () => onExit && onExit();
   }
@@ -60,13 +65,23 @@ export async function renderHistory(root, { onExit, initialRecordId } = {}) {
         <button id="backBtn" class="btn-secondary">Back</button>
       </div>
     `;
-    root.querySelector('#backBtn').onclick = () => renderList();
+    root.querySelector('#backBtn').onclick = () => history.back();
   }
 
-  const initialRecord = initialRecordId && records.find(r => r.id === initialRecordId);
-  if (initialRecord) {
-    renderDetail(initialRecord);
+  sub.onPop(screen => {
+    if (screen && screen.screen === 'detail') {
+      const record = records.find(r => r.id === screen.id);
+      if (record) return renderDetail(record);
+    }
+    renderList();
+  });
+
+  if (initialRecordId && records.find(r => r.id === initialRecordId)) {
+    sub.push({ screen: 'detail', id: initialRecordId });
+    renderDetail(records.find(r => r.id === initialRecordId));
   } else {
     renderList();
   }
+
+  return () => sub.destroy();
 }

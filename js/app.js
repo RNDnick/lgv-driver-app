@@ -6,11 +6,13 @@ import * as backend from './backend.js';
 import * as sync from './sync.js';
 import { getLabel } from './checklists-data.js';
 import { APP_VERSION } from './version.js';
+import { checkLeaveGuard, clearLeaveGuard } from './nav-guard.js';
 
 const RECENT_CHECKLISTS_COUNT = 5;
 
 const root = document.getElementById('app-root');
 let cleanup = null;
+let currentView = null;
 
 function fmtDate(ts) {
   return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -19,9 +21,14 @@ function fmtDate(ts) {
 // Every top-level view (Home, Connect, Disconnect, Job Log, History) is only
 // ever reached directly from Home, so the browser's previous history entry is
 // always Home - that's what lets onExit just call history.back() below rather
-// than needing to track a full navigation stack ourselves.
+// than needing to track a full navigation stack ourselves. Each view also owns
+// its own internal sub-navigation (steps, list/detail) via subrouter.js; the
+// popstate listener below only remounts a view from scratch when we're
+// actually crossing into a *different* top-level view, not for internal
+// screen changes within the currently active one.
 function go(view, params = {}) {
-  history.pushState({ view, params }, '');
+  history.pushState({ view, params, screen: null }, '');
+  currentView = view;
   renderView(view, params);
 }
 
@@ -30,12 +37,13 @@ async function renderView(view, params = {}) {
   if (!session) { showAuth(); return; }
 
   if (cleanup) { cleanup(); cleanup = null; }
+  currentView = view;
   try {
     if (view === 'home') return await renderHome();
     if (view === 'connect') return (cleanup = await renderChecklistFlow(root, 'connect', { onExit: () => history.back() }));
     if (view === 'disconnect') return (cleanup = await renderChecklistFlow(root, 'disconnect', { onExit: () => history.back() }));
-    if (view === 'joblog') return await renderJobLog(root, { onExit: () => history.back() });
-    if (view === 'history') return await renderHistory(root, { onExit: () => history.back(), initialRecordId: params.recordId });
+    if (view === 'joblog') return (cleanup = await renderJobLog(root, { onExit: () => history.back() }));
+    if (view === 'history') return (cleanup = await renderHistory(root, { onExit: () => history.back(), initialRecordId: params.recordId }));
   } catch (err) {
     root.innerHTML = `
       <div class="screen">
@@ -53,7 +61,8 @@ function showAuth() {
 }
 
 function resetToHome() {
-  history.replaceState({ view: 'home', params: {} }, '');
+  history.replaceState({ view: 'home', params: {}, screen: null }, '');
+  currentView = 'home';
   renderView('home');
 }
 
@@ -139,6 +148,12 @@ backend.onAuthChange(session => {
 
 window.addEventListener('popstate', event => {
   const state = event.state || { view: 'home', params: {} };
+  if (state.view === currentView) return; // an internal subrouter handles this
+  if (!checkLeaveGuard()) {
+    history.pushState({ view: currentView, params: {}, screen: null }, '');
+    return;
+  }
+  clearLeaveGuard();
   renderView(state.view, state.params);
 });
 

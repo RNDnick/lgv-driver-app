@@ -1,7 +1,7 @@
 // Keep in sync with APP_VERSION in js/version.js - a classic (non-module)
 // service worker can't import it directly, so this is bumped by hand on every
 // release alongside that file.
-const CACHE = 'lgv-driver-v1.5.0';
+const CACHE = 'lgv-driver-v1.6.0';
 const ASSETS = [
   './',
   './index.html',
@@ -19,6 +19,8 @@ const ASSETS = [
   './js/supabase-client.js',
   './js/photo-hash.js',
   './js/version.js',
+  './js/subrouter.js',
+  './js/nav-guard.js',
   './manifest.json',
 ];
 
