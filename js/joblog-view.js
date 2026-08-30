@@ -46,6 +46,7 @@ export async function renderJobLog(root, { onExit } = {}) {
         <label class="field"><span>Collection site</span><input id="collectionSite" type="text" /></label>
         <label class="field"><span>Delivery site</span><input id="deliverySite" type="text" /></label>
         <label class="field"><span>Trailer registration</span><input id="trailerReg" type="text" /></label>
+        <p id="formError" class="error" style="display:none">Trailer registration is required.</p>
         <label class="field"><span>Mileage at start</span><input id="mileageStart" type="number" inputmode="numeric" /></label>
         <label class="field"><span>Notes</span><textarea id="notes" rows="3"></textarea></label>
         <button id="saveBtn" class="btn-primary btn-large">Save Job</button>
@@ -53,6 +54,11 @@ export async function renderJobLog(root, { onExit } = {}) {
       </div>
     `;
     root.querySelector('#saveBtn').onclick = async () => {
+      const trailerReg = root.querySelector('#trailerReg').value.trim();
+      if (!trailerReg) {
+        root.querySelector('#formError').style.display = 'block';
+        return;
+      }
       const job = {
         id: newId(),
         status: 'open',
@@ -60,7 +66,7 @@ export async function renderJobLog(root, { onExit } = {}) {
         customer: root.querySelector('#customer').value.trim(),
         collectionSite: root.querySelector('#collectionSite').value.trim(),
         deliverySite: root.querySelector('#deliverySite').value.trim(),
-        trailerReg: root.querySelector('#trailerReg').value.trim(),
+        trailerReg,
         mileageStart: root.querySelector('#mileageStart').value || null,
         mileageEnd: null,
         notes: root.querySelector('#notes').value.trim(),

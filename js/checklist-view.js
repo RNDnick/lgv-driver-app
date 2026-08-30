@@ -25,9 +25,10 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
       <div class="screen">
         <h2>${getLabel(type)}</h2>
         <label class="field">
-          <span>Trailer registration (optional)</span>
+          <span>Trailer registration</span>
           <input id="trailerReg" type="text" placeholder="e.g. AB12 CDE" value="${trailerReg}" />
         </label>
+        <p id="setupError" class="error" style="display:none">Trailer registration is required.</p>
         ${openJobs.length ? `
         <label class="field">
           <span>Link to job (optional)</span>
@@ -41,7 +42,12 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
       </div>
     `;
     root.querySelector('#startBtn').onclick = () => {
-      trailerReg = root.querySelector('#trailerReg').value.trim();
+      const value = root.querySelector('#trailerReg').value.trim();
+      if (!value) {
+        root.querySelector('#setupError').style.display = 'block';
+        return;
+      }
+      trailerReg = value;
       const sel = root.querySelector('#jobSelect');
       jobId = sel ? sel.value : '';
       stepIndex = 0;
