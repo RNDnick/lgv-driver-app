@@ -6,11 +6,25 @@ const HASH_ROWS = 8;
 
 export async function hashBlob(blob) {
   const bitmap = await createImageBitmap(blob);
+
+  // Downscale in two stages with smoothing enabled — a direct jump straight to a
+  // 9x8 grid aliases badly on real camera photos (high source resolution, fine
+  // detail), which swamps the gradient signal dHash relies on.
+  const mid = document.createElement('canvas');
+  mid.width = 64;
+  mid.height = 64;
+  const midCtx = mid.getContext('2d');
+  midCtx.imageSmoothingEnabled = true;
+  midCtx.imageSmoothingQuality = 'high';
+  midCtx.drawImage(bitmap, 0, 0, 64, 64);
+
   const canvas = document.createElement('canvas');
   canvas.width = HASH_COLS;
   canvas.height = HASH_ROWS;
   const ctx = canvas.getContext('2d');
-  ctx.drawImage(bitmap, 0, 0, HASH_COLS, HASH_ROWS);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(mid, 0, 0, HASH_COLS, HASH_ROWS);
   const { data } = ctx.getImageData(0, 0, HASH_COLS, HASH_ROWS);
 
   const gray = [];
@@ -46,7 +60,13 @@ export function hammingDistance(hexA, hexB) {
   return dist;
 }
 
-export const NEAR_DUPLICATE_THRESHOLD = 10;
+// Out of 64 bits. Deliberately loose: independent camera captures generate a lot
+// of gradient noise (auto-exposure, focus, hand shake), and testing against real
+// photos showed no clean separation between "same static scene" and "genuinely
+// different scene" — so this leans toward flagging more, on the assumption that a
+// non-blocking warning plus manager review is an acceptable backstop for the
+// false positives that come with it.
+export const NEAR_DUPLICATE_THRESHOLD = 16;
 
 export function isNearDuplicate(hexA, hexB, threshold = NEAR_DUPLICATE_THRESHOLD) {
   return hammingDistance(hexA, hexB) <= threshold;

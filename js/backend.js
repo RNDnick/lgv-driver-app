@@ -169,7 +169,7 @@ export async function syncChecklist(record, photos = {}) {
         .upload(photoPath, blob, { upsert: true, contentType: 'image/jpeg' });
       if (error) throw error;
     }
-    steps.push({ key: step.key, title: step.title, completedAt: step.completedAt, photoPath });
+    steps.push({ key: step.key, title: step.title, completedAt: step.completedAt, photoPath, photoHash: step.photoHash || null });
   }
 
   const row = {
