@@ -16,14 +16,26 @@ function fmtDate(ts) {
   return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-async function go(view, params = {}) {
+// Every top-level view (Home, Connect, Disconnect, Job Log, History) is only
+// ever reached directly from Home, so the browser's previous history entry is
+// always Home - that's what lets onExit just call history.back() below rather
+// than needing to track a full navigation stack ourselves.
+function go(view, params = {}) {
+  history.pushState({ view, params }, '');
+  renderView(view, params);
+}
+
+async function renderView(view, params = {}) {
+  const session = await backend.getSession();
+  if (!session) { showAuth(); return; }
+
   if (cleanup) { cleanup(); cleanup = null; }
   try {
     if (view === 'home') return await renderHome();
-    if (view === 'connect') return (cleanup = await renderChecklistFlow(root, 'connect', { onExit: () => go('home') }));
-    if (view === 'disconnect') return (cleanup = await renderChecklistFlow(root, 'disconnect', { onExit: () => go('home') }));
-    if (view === 'joblog') return await renderJobLog(root, { onExit: () => go('home') });
-    if (view === 'history') return await renderHistory(root, { onExit: () => go('home'), initialRecordId: params.recordId });
+    if (view === 'connect') return (cleanup = await renderChecklistFlow(root, 'connect', { onExit: () => history.back() }));
+    if (view === 'disconnect') return (cleanup = await renderChecklistFlow(root, 'disconnect', { onExit: () => history.back() }));
+    if (view === 'joblog') return await renderJobLog(root, { onExit: () => history.back() });
+    if (view === 'history') return await renderHistory(root, { onExit: () => history.back(), initialRecordId: params.recordId });
   } catch (err) {
     root.innerHTML = `
       <div class="screen">
@@ -32,12 +44,17 @@ async function go(view, params = {}) {
         <button id="retryBtn" class="btn-primary btn-large">Retry</button>
       </div>
     `;
-    root.querySelector('#retryBtn').onclick = () => go(view, params);
+    root.querySelector('#retryBtn').onclick = () => renderView(view, params);
   }
 }
 
 function showAuth() {
-  renderAuth(root, { onAuthed: () => go('home') });
+  renderAuth(root, { onAuthed: () => resetToHome() });
+}
+
+function resetToHome() {
+  history.replaceState({ view: 'home', params: {} }, '');
+  renderView('home');
 }
 
 async function renderHome() {
@@ -106,7 +123,7 @@ async function renderHome() {
 async function boot() {
   const session = await backend.getSession();
   if (session) {
-    go('home');
+    resetToHome();
   } else {
     showAuth();
   }
@@ -114,10 +131,15 @@ async function boot() {
 
 backend.onAuthChange(session => {
   if (session) {
-    go('home');
+    resetToHome();
   } else {
     showAuth();
   }
+});
+
+window.addEventListener('popstate', event => {
+  const state = event.state || { view: 'home', params: {} };
+  renderView(state.view, state.params);
 });
 
 boot();
