@@ -42,6 +42,13 @@ on your phone, deploy the folder somewhere with HTTPS (e.g. GitHub Pages, Netlif
 Vercel — all free for a static site like this), then open that HTTPS URL on your
 phone and "Add to Home Screen" for an app-like icon.
 
+The app tries to turn the camera flash (torch) on automatically for every photo,
+since kingpin/dog clip photos are often taken underneath the trailer in near-total
+darkness. This works on Android Chrome but **not on iOS Safari** — Apple doesn't
+expose flash control to web apps at all, so on an iPhone the driver will need to
+provide their own light (phone torch via Control Centre, work light, etc.)
+before taking those photos.
+
 ## Backend setup (Supabase)
 
 This app talks directly to a Supabase project (Postgres + Auth + Storage) from
