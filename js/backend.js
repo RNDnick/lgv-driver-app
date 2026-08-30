@@ -53,6 +53,7 @@ function toJobRow(job, driverId) {
     mileage_end: job.mileageEnd ? parseInt(job.mileageEnd, 10) : null,
     notes: job.notes,
     pod_photo_path: job.podPhotoPath || null,
+    pod_photo_hash: job.podPhotoHash || null,
     completed_at: job.completedAt,
   };
 }
@@ -70,8 +71,39 @@ function fromJobRow(row) {
     mileageEnd: row.mileage_end,
     notes: row.notes,
     podPhotoPath: row.pod_photo_path,
+    podPhotoHash: row.pod_photo_hash,
     completedAt: row.completed_at,
   };
+}
+
+function startOfToday() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+export async function getTodaysJobs() {
+  const session = await getSession();
+  if (!session) return [];
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*')
+    .eq('driver_id', session.user.id)
+    .gte('created_at', startOfToday());
+  if (error) throw error;
+  return data.map(fromJobRow);
+}
+
+export async function getTodaysChecklists() {
+  const session = await getSession();
+  if (!session) return [];
+  const { data, error } = await supabase
+    .from('checklists')
+    .select('*')
+    .eq('driver_id', session.user.id)
+    .gte('completed_at', startOfToday());
+  if (error) throw error;
+  return data.map(fromChecklistRow);
 }
 
 export async function getAllJobs() {

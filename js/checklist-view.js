@@ -2,6 +2,7 @@ import { getSteps, getLabel } from './checklists-data.js';
 import { startCamera, stopCamera, captureFrame } from './camera.js';
 import { newId } from './db.js';
 import * as sync from './sync.js';
+import { hashBlob, isNearDuplicate } from './photo-hash.js';
 
 export async function renderChecklistFlow(root, type, { onExit } = {}) {
   const steps = getSteps(type);
@@ -78,18 +79,22 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
     root.querySelector('#backBtn').onclick = () => { cleanupCamera(); onExit && onExit(); };
   }
 
-  function renderReview(step, photo) {
+  async function renderReview(step, photo) {
     const url = URL.createObjectURL(photo);
+    const photoHash = await hashBlob(photo);
+    const priorHashes = await sync.getTodaysStepHashes(step.key);
+    const isDuplicate = priorHashes.some(h => isNearDuplicate(h, photoHash));
     root.innerHTML = `
       <div class="screen">
         <h2>${step.key} — ${step.title}</h2>
         <img src="${url}" class="photo-preview" alt="Captured evidence for ${step.title}" />
+        ${isDuplicate ? `<p class="warning">This looks very similar to another ${step.title} photo already taken today. Make sure this is a genuinely new photo before confirming.</p>` : ''}
         <button id="confirmBtn" class="btn-primary btn-large">✔ Confirm</button>
         <button id="retakeBtn" class="btn-secondary">Retake</button>
       </div>
     `;
     root.querySelector('#confirmBtn').onclick = () => {
-      captures.push({ key: step.key, title: step.title, completedAt: Date.now(), photo });
+      captures.push({ key: step.key, title: step.title, completedAt: Date.now(), photo, photoHash });
       stepIndex += 1;
       if (stepIndex < steps.length) {
         renderStep();
@@ -125,7 +130,7 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
         jobId: jobId || null,
         startedAt: captures[0]?.completedAt || Date.now(),
         completedAt: Date.now(),
-        steps: captures.map(c => ({ key: c.key, title: c.title, completedAt: c.completedAt, photoPath: null })),
+        steps: captures.map(c => ({ key: c.key, title: c.title, completedAt: c.completedAt, photoPath: null, photoHash: c.photoHash })),
       };
       const photos = Object.fromEntries(captures.map(c => [c.key, c.photo]));
       await sync.enqueue('checklist', record, photos);

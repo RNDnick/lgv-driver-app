@@ -81,5 +81,44 @@ export async function getMergedChecklists() {
   return mergeWithPending('checklist', synced, 'completedAt');
 }
 
+function startOfToday() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+export async function getTodaysStepHashes(stepKey) {
+  const [synced, pending] = await Promise.all([
+    backend.getTodaysChecklists(),
+    getPendingByKind('checklist'),
+  ]);
+  const hashes = [];
+  for (const record of synced) {
+    const step = record.steps.find(s => s.key === stepKey);
+    if (step?.photoHash) hashes.push(step.photoHash);
+  }
+  const todayMs = startOfToday();
+  for (const entry of pending) {
+    if ((entry.payload.completedAt || entry.createdAt) < todayMs) continue;
+    const step = entry.payload.steps.find(s => s.key === stepKey);
+    if (step?.photoHash) hashes.push(step.photoHash);
+  }
+  return hashes;
+}
+
+export async function getTodaysPodHashes() {
+  const [synced, pending] = await Promise.all([
+    backend.getTodaysJobs(),
+    getPendingByKind('job'),
+  ]);
+  const hashes = synced.filter(j => j.podPhotoHash).map(j => j.podPhotoHash);
+  const todayMs = startOfToday();
+  for (const entry of pending) {
+    if ((entry.payload.createdAt || entry.createdAt) < todayMs) continue;
+    if (entry.payload.podPhotoHash) hashes.push(entry.payload.podPhotoHash);
+  }
+  return hashes;
+}
+
 window.addEventListener('online', flushOutbox);
 flushOutbox();

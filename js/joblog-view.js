@@ -2,6 +2,7 @@ import { newId } from './db.js';
 import * as sync from './sync.js';
 import * as backend from './backend.js';
 import { startCamera, stopCamera, captureFrame } from './camera.js';
+import { hashBlob, isNearDuplicate } from './photo-hash.js';
 
 function fmtDate(ts) {
   return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -129,23 +130,48 @@ export async function renderJobLog(root, { onExit } = {}) {
       captureBtn.disabled = true;
       captureBtn.textContent = 'Camera unavailable';
     }
-    async function finish(photo) {
-      stopCamera(stream);
+    async function finish(photo, photoHash, mileageEndValue) {
       const { pending, _photos, ...jobFields } = job;
       const updated = {
         ...jobFields,
-        mileageEnd: root.querySelector('#mileageEnd').value || null,
+        mileageEnd: mileageEndValue || null,
         status: 'complete',
         completedAt: Date.now(),
+        podPhotoHash: photoHash || jobFields.podPhotoHash || null,
       };
       await sync.enqueue('job', updated, photo ? { pod: photo } : {});
       renderList();
     }
+
+    async function renderPodReview(photo, mileageEndValue) {
+      const url = URL.createObjectURL(photo);
+      const photoHash = await hashBlob(photo);
+      const priorHashes = await sync.getTodaysPodHashes();
+      const isDuplicate = priorHashes.some(h => isNearDuplicate(h, photoHash));
+      root.innerHTML = `
+        <div class="screen">
+          <h2>Proof of Delivery</h2>
+          <img src="${url}" class="photo-preview" alt="Proof of delivery" />
+          ${isDuplicate ? '<p class="warning">This looks very similar to another delivery photo already taken today. Make sure it\'s genuinely this delivery before confirming.</p>' : ''}
+          <button id="confirmBtn" class="btn-primary btn-large">✔ Confirm</button>
+          <button id="retakeBtn" class="btn-secondary">Retake</button>
+        </div>
+      `;
+      root.querySelector('#confirmBtn').onclick = () => finish(photo, photoHash, mileageEndValue);
+      root.querySelector('#retakeBtn').onclick = () => renderComplete(job);
+    }
+
     captureBtn.onclick = async () => {
+      const mileageEndValue = root.querySelector('#mileageEnd').value || null;
       const photo = await captureFrame(videoEl);
-      finish(photo);
+      stopCamera(stream);
+      renderPodReview(photo, mileageEndValue);
     };
-    root.querySelector('#skipBtn').onclick = () => finish(null);
+    root.querySelector('#skipBtn').onclick = () => {
+      const mileageEndValue = root.querySelector('#mileageEnd').value || null;
+      stopCamera(stream);
+      finish(null, null, mileageEndValue);
+    };
     root.querySelector('#cancelBtn').onclick = () => { stopCamera(stream); renderDetail(job); };
   }
 

@@ -17,6 +17,12 @@ data is synced to a shared Supabase backend so it isn't stuck on one device.
 - **Offline-safe saves** — every save writes to a local queue first and syncs to
   the backend automatically once you have a signal, so nothing is lost if you're
   in a poor-signal yard when you finish a check.
+- **Same-day duplicate photo warning** — each photo is fingerprinted on-device
+  (a perceptual hash, not the exact bytes) and compared against your other
+  photos from *today only* for that same step. A near-identical match shows a
+  warning before you confirm — it doesn't block you, since it's a nudge to
+  double-check, not a determination of fraud. Yesterday's brake-on photo
+  naturally looks a lot like today's, so only same-day matches are checked.
 
 A checklist run can optionally be linked to an open job.
 

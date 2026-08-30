@@ -1,4 +1,4 @@
-const CACHE = 'lgv-driver-v2';
+const CACHE = 'lgv-driver-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -14,6 +14,7 @@ const ASSETS = [
   './js/backend.js',
   './js/sync.js',
   './js/supabase-client.js',
+  './js/photo-hash.js',
   './manifest.json',
 ];
 

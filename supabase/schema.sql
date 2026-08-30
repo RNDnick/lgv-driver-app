@@ -80,6 +80,7 @@ create table public.jobs (
   mileage_end integer,
   notes text,
   pod_photo_path text,
+  pod_photo_hash text,
   completed_at bigint
 );
 
