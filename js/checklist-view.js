@@ -95,13 +95,27 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
   async function renderReview(step, photo) {
     const url = URL.createObjectURL(photo);
     const photoHash = await hashBlob(photo);
+
+    // Kingpin, clip, airlines, legs and brake are physically distinct - any two
+    // of them looking near-identical within the same checklist is a much
+    // stronger signal than the cross-day check below, which only compares a
+    // step against *other checklists'* photos for that same step.
+    const withinChecklistMatch = captures.find(c => isNearDuplicate(c.photoHash, photoHash));
     const priorHashes = await sync.getTodaysStepHashes(step.key);
-    const isDuplicate = priorHashes.some(h => isNearDuplicate(h, photoHash));
+    const isDuplicateAcrossDays = priorHashes.some(h => isNearDuplicate(h, photoHash));
+
+    let warning = '';
+    if (withinChecklistMatch) {
+      warning = `This looks like the same photo as your ${withinChecklistMatch.title} photo, already taken in this checklist. Each step needs its own genuine photo.`;
+    } else if (isDuplicateAcrossDays) {
+      warning = `This looks very similar to another ${step.title} photo already taken today. Make sure this is a genuinely new photo before confirming.`;
+    }
+
     root.innerHTML = `
       <div class="screen">
         <h2>${step.key} — ${step.title}</h2>
         <img src="${url}" class="photo-preview" alt="Captured evidence for ${step.title}" />
-        ${isDuplicate ? `<p class="warning">This looks very similar to another ${step.title} photo already taken today. Make sure this is a genuinely new photo before confirming.</p>` : ''}
+        ${warning ? `<p class="warning">${warning}</p>` : ''}
         <button id="confirmBtn" class="btn-primary btn-large">✔ Confirm</button>
         <button id="retakeBtn" class="btn-secondary">Retake</button>
       </div>
