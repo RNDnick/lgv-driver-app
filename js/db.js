@@ -1,5 +1,5 @@
 const DB_NAME = 'lgv-driver-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise = null;
 
@@ -9,11 +9,13 @@ export function openDB() {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
-      if (!db.objectStoreNames.contains('jobs')) {
-        db.createObjectStore('jobs', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('outbox')) {
+        db.createObjectStore('outbox', { keyPath: 'id' });
       }
-      if (!db.objectStoreNames.contains('checklists')) {
-        db.createObjectStore('checklists', { keyPath: 'id' });
+      for (const legacyStore of ['jobs', 'checklists']) {
+        if (db.objectStoreNames.contains(legacyStore)) {
+          db.deleteObjectStore(legacyStore);
+        }
       }
     };
     req.onsuccess = () => resolve(req.result);

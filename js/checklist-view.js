@@ -1,6 +1,7 @@
 import { getSteps, getLabel } from './checklists-data.js';
 import { startCamera, stopCamera, captureFrame } from './camera.js';
-import { dbPut, dbGetAll, newId } from './db.js';
+import { newId } from './db.js';
+import * as sync from './sync.js';
 
 export async function renderChecklistFlow(root, type, { onExit } = {}) {
   const steps = getSteps(type);
@@ -10,7 +11,7 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
   let stream = null;
   const captures = []; // { key, title, completedAt, photo }
 
-  const openJobs = (await dbGetAll('jobs')).filter(j => j.status === 'open');
+  const openJobs = (await sync.getMergedJobs()).filter(j => j.status === 'open');
 
   function cleanupCamera() {
     stopCamera(stream);
@@ -124,9 +125,10 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
         jobId: jobId || null,
         startedAt: captures[0]?.completedAt || Date.now(),
         completedAt: Date.now(),
-        steps: captures,
+        steps: captures.map(c => ({ key: c.key, title: c.title, completedAt: c.completedAt, photoPath: null })),
       };
-      await dbPut('checklists', record);
+      const photos = Object.fromEntries(captures.map(c => [c.key, c.photo]));
+      await sync.enqueue('checklist', record, photos);
       onExit && onExit();
     };
     root.querySelector('#discardBtn').onclick = () => onExit && onExit();

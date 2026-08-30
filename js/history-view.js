@@ -1,4 +1,5 @@
-import { dbGetAll } from './db.js';
+import * as sync from './sync.js';
+import * as backend from './backend.js';
 import { getLabel } from './checklists-data.js';
 
 function fmtDate(ts) {
@@ -6,7 +7,7 @@ function fmtDate(ts) {
 }
 
 export async function renderHistory(root, { onExit } = {}) {
-  const records = (await dbGetAll('checklists')).sort((a, b) => b.completedAt - a.completedAt);
+  const records = await sync.getMergedChecklists();
 
   function renderList() {
     root.innerHTML = `
@@ -17,6 +18,7 @@ export async function renderHistory(root, { onExit } = {}) {
             <div class="list-item" data-id="${r.id}">
               <div class="list-item-main">
                 <strong>${getLabel(r.type)}</strong>
+                ${r.pending ? '<span class="badge pending">Pending sync</span>' : ''}
                 <div class="muted">${r.trailerReg || 'No trailer reg'}</div>
                 <div class="muted small">${fmtDate(r.completedAt)}</div>
               </div>
@@ -32,15 +34,25 @@ export async function renderHistory(root, { onExit } = {}) {
     root.querySelector('#backBtn').onclick = () => onExit && onExit();
   }
 
-  function renderDetail(record) {
+  async function renderDetail(record) {
+    const stepPhotoUrls = await Promise.all(record.steps.map(async s => {
+      if (record.pending && record._photos && record._photos[s.key]) {
+        return URL.createObjectURL(record._photos[s.key]);
+      }
+      if (s.photoPath) {
+        return backend.getPhotoUrl(s.photoPath);
+      }
+      return null;
+    }));
     root.innerHTML = `
       <div class="screen">
         <h2>${getLabel(record.type)}</h2>
+        ${record.pending ? '<span class="badge pending">Pending sync</span>' : ''}
         <p class="muted">${record.trailerReg || 'No trailer reg'} · ${fmtDate(record.completedAt)}</p>
         <div class="thumb-grid">
-          ${record.steps.map(s => `
+          ${record.steps.map((s, i) => `
             <div class="thumb">
-              <img src="${URL.createObjectURL(s.photo)}" alt="${s.title}" />
+              <img src="${stepPhotoUrls[i] || ''}" alt="${s.title}" />
               <span>${s.key} · ${s.title}</span>
             </div>
           `).join('')}

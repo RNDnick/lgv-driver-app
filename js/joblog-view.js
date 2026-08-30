@@ -1,4 +1,6 @@
-import { dbPut, dbGetAll, dbDelete, newId } from './db.js';
+import { newId } from './db.js';
+import * as sync from './sync.js';
+import * as backend from './backend.js';
 import { startCamera, stopCamera, captureFrame } from './camera.js';
 
 function fmtDate(ts) {
@@ -7,7 +9,7 @@ function fmtDate(ts) {
 
 export async function renderJobLog(root, { onExit } = {}) {
   async function renderList() {
-    const jobs = (await dbGetAll('jobs')).sort((a, b) => b.createdAt - a.createdAt);
+    const jobs = await sync.getMergedJobs();
     root.innerHTML = `
       <div class="screen">
         <h2>Job &amp; Delivery Log</h2>
@@ -18,6 +20,7 @@ export async function renderJobLog(root, { onExit } = {}) {
               <div class="list-item-main">
                 <strong>${j.customer || 'Untitled job'}</strong>
                 <span class="badge ${j.status}">${j.status}</span>
+                ${j.pending ? '<span class="badge pending">Pending sync</span>' : ''}
                 <div class="muted">${j.collectionSite || '—'} → ${j.deliverySite || '—'}</div>
                 <div class="muted small">${fmtDate(j.createdAt)}${j.trailerReg ? ' · ' + j.trailerReg : ''}</div>
               </div>
@@ -60,25 +63,32 @@ export async function renderJobLog(root, { onExit } = {}) {
         mileageStart: root.querySelector('#mileageStart').value || null,
         mileageEnd: null,
         notes: root.querySelector('#notes').value.trim(),
-        podPhoto: null,
+        podPhotoPath: null,
         completedAt: null,
       };
-      await dbPut('jobs', job);
+      await sync.enqueue('job', job, {});
       renderList();
     };
     root.querySelector('#cancelBtn').onclick = () => renderList();
   }
 
-  function renderDetail(job) {
+  async function renderDetail(job) {
+    let photoUrl = null;
+    if (job.pending && job._photos && job._photos.pod) {
+      photoUrl = URL.createObjectURL(job._photos.pod);
+    } else if (job.podPhotoPath) {
+      photoUrl = await backend.getPhotoUrl(job.podPhotoPath);
+    }
     root.innerHTML = `
       <div class="screen">
         <h2>${job.customer || 'Job'}</h2>
         <span class="badge ${job.status}">${job.status}</span>
+        ${job.pending ? '<span class="badge pending">Pending sync</span>' : ''}
         <p class="muted">${job.collectionSite || '—'} → ${job.deliverySite || '—'}</p>
         <p class="muted small">Created ${fmtDate(job.createdAt)}${job.trailerReg ? ' · ' + job.trailerReg : ''}</p>
         ${job.mileageStart ? `<p>Mileage start: ${job.mileageStart}${job.mileageEnd ? ' · end: ' + job.mileageEnd : ''}</p>` : ''}
         ${job.notes ? `<p>${job.notes}</p>` : ''}
-        ${job.podPhoto ? `<img class="photo-preview" src="${URL.createObjectURL(job.podPhoto)}" alt="Proof of delivery" />` : ''}
+        ${photoUrl ? `<img class="photo-preview" src="${photoUrl}" alt="Proof of delivery" />` : ''}
         ${job.status === 'open' ? '<button id="completeBtn" class="btn-primary btn-large">Mark Delivered (capture POD)</button>' : ''}
         <button id="deleteBtn" class="btn-secondary">Delete</button>
         <button id="backBtn" class="btn-secondary">Back</button>
@@ -88,7 +98,11 @@ export async function renderJobLog(root, { onExit } = {}) {
       root.querySelector('#completeBtn').onclick = () => renderComplete(job);
     }
     root.querySelector('#deleteBtn').onclick = async () => {
-      await dbDelete('jobs', job.id);
+      if (job.pending) {
+        await sync.cancelPending(job.id);
+      } else {
+        await backend.deleteJob(job.id);
+      }
       renderList();
     };
     root.querySelector('#backBtn').onclick = () => renderList();
@@ -117,11 +131,14 @@ export async function renderJobLog(root, { onExit } = {}) {
     }
     async function finish(photo) {
       stopCamera(stream);
-      job.mileageEnd = root.querySelector('#mileageEnd').value || null;
-      job.podPhoto = photo || null;
-      job.status = 'complete';
-      job.completedAt = Date.now();
-      await dbPut('jobs', job);
+      const { pending, _photos, ...jobFields } = job;
+      const updated = {
+        ...jobFields,
+        mileageEnd: root.querySelector('#mileageEnd').value || null,
+        status: 'complete',
+        completedAt: Date.now(),
+      };
+      await sync.enqueue('job', updated, photo ? { pod: photo } : {});
       renderList();
     }
     captureBtn.onclick = async () => {
