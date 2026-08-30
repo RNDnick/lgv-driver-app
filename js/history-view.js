@@ -6,7 +6,7 @@ function fmtDate(ts) {
   return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-export async function renderHistory(root, { onExit } = {}) {
+export async function renderHistory(root, { onExit, initialRecordId } = {}) {
   const records = await sync.getMergedChecklists();
 
   function renderList() {
@@ -63,5 +63,10 @@ export async function renderHistory(root, { onExit } = {}) {
     root.querySelector('#backBtn').onclick = () => renderList();
   }
 
-  renderList();
+  const initialRecord = initialRecordId && records.find(r => r.id === initialRecordId);
+  if (initialRecord) {
+    renderDetail(initialRecord);
+  } else {
+    renderList();
+  }
 }

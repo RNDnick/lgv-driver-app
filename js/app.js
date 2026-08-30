@@ -5,6 +5,9 @@ import { renderAuth } from './auth-view.js';
 import * as backend from './backend.js';
 import * as sync from './sync.js';
 import { getLabel } from './checklists-data.js';
+import { APP_VERSION } from './version.js';
+
+const RECENT_CHECKLISTS_COUNT = 5;
 
 const root = document.getElementById('app-root');
 let cleanup = null;
@@ -13,14 +16,14 @@ function fmtDate(ts) {
   return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-async function go(view) {
+async function go(view, params = {}) {
   if (cleanup) { cleanup(); cleanup = null; }
   try {
     if (view === 'home') return await renderHome();
     if (view === 'connect') return (cleanup = await renderChecklistFlow(root, 'connect', { onExit: () => go('home') }));
     if (view === 'disconnect') return (cleanup = await renderChecklistFlow(root, 'disconnect', { onExit: () => go('home') }));
     if (view === 'joblog') return await renderJobLog(root, { onExit: () => go('home') });
-    if (view === 'history') return await renderHistory(root, { onExit: () => go('home') });
+    if (view === 'history') return await renderHistory(root, { onExit: () => go('home'), initialRecordId: params.recordId });
   } catch (err) {
     root.innerHTML = `
       <div class="screen">
@@ -29,7 +32,7 @@ async function go(view) {
         <button id="retryBtn" class="btn-primary btn-large">Retry</button>
       </div>
     `;
-    root.querySelector('#retryBtn').onclick = () => go(view);
+    root.querySelector('#retryBtn').onclick = () => go(view, params);
   }
 }
 
@@ -44,7 +47,7 @@ async function renderHome() {
     sync.getPendingCount(),
   ]);
   const openJobs = jobs.filter(j => j.status === 'open').length;
-  const recent = checklists.slice(0, 3);
+  const recent = checklists.slice(0, RECENT_CHECKLISTS_COUNT);
 
   root.innerHTML = `
     <div class="screen">
@@ -78,7 +81,7 @@ async function renderHome() {
       <h3>Recent checklists</h3>
       <div class="list">
         ${recent.map(r => `
-          <div class="list-item">
+          <div class="list-item" data-id="${r.id}">
             <div class="list-item-main">
               <strong>${getLabel(r.type)}</strong>
               ${r.pending ? '<span class="badge pending">Pending sync</span>' : ''}
@@ -87,6 +90,7 @@ async function renderHome() {
           </div>
         `).join('')}
       </div>` : ''}
+      <p class="muted small version-tag">v${APP_VERSION}</p>
     </div>
   `;
   root.querySelector('#connectBtn').onclick = () => go('connect');
@@ -94,6 +98,9 @@ async function renderHome() {
   root.querySelector('#joblogBtn').onclick = () => go('joblog');
   root.querySelector('#historyBtn').onclick = () => go('history');
   root.querySelector('#logoutBtn').onclick = () => backend.signOut();
+  root.querySelectorAll('.list-item').forEach(el => {
+    el.onclick = () => go('history', { recordId: el.dataset.id });
+  });
 }
 
 async function boot() {
