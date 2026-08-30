@@ -27,7 +27,7 @@ async function renderHome() {
 
   root.innerHTML = `
     <div class="screen">
-      <h1>LGV Driver</h1>
+      <h1>Trailer Uncouple/Couple</h1>
       <div class="home-grid">
         <button class="tile tile-connect" id="connectBtn">
           <span class="tile-icon">🔗</span>

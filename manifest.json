@@ -1,6 +1,6 @@
 {
-  "name": "LGV Driver",
-  "short_name": "LGV Driver",
+  "name": "Trailer Uncouple/Couple",
+  "short_name": "Trailer C/U",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f1115",
