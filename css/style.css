@@ -38,6 +38,7 @@ h3 { font-size: 1rem; color: var(--muted); margin-top: 24px; }
 
 .muted { color: var(--muted); }
 .muted.small { font-size: 0.8rem; }
+.version-tag { text-align: center; margin-top: 8px; }
 .instruction { font-size: 1.05rem; line-height: 1.5; }
 .error { color: var(--danger); }
 

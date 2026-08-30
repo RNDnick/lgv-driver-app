@@ -1,4 +1,5 @@
 import * as backend from './backend.js';
+import { APP_VERSION } from './version.js';
 
 export function renderAuth(root, { onAuthed } = {}) {
   let mode = 'signin';
@@ -15,6 +16,7 @@ export function renderAuth(root, { onAuthed } = {}) {
         <p id="authError" class="error" style="display:none"></p>
         <button id="submitBtn" class="btn-primary btn-large">${mode === 'signin' ? 'Sign In' : 'Sign Up'}</button>
         <button id="toggleBtn" class="btn-secondary">${mode === 'signin' ? 'Need an account? Sign Up' : 'Have an account? Sign In'}</button>
+        <p class="muted small version-tag">v${APP_VERSION}</p>
       </div>
     `;
     root.querySelector('#toggleBtn').onclick = () => {
