@@ -16,13 +16,45 @@ export async function startCamera(videoEl) {
 // supported at all on iOS Safari (no web API for it), so this silently no-ops
 // there rather than failing the capture.
 async function enableTorchIfAvailable(stream) {
-  const track = stream.getVideoTracks()[0];
-  const capabilities = track?.getCapabilities?.();
-  if (!capabilities?.torch) return;
+  if (!isTorchSupported(stream)) return;
+  await setTorch(stream, true);
+}
+
+export function isTorchSupported(stream) {
+  const track = stream?.getVideoTracks()[0];
+  return !!track?.getCapabilities?.().torch;
+}
+
+export async function setTorch(stream, on) {
+  const track = stream?.getVideoTracks()[0];
+  if (!track) return false;
   try {
-    await track.applyConstraints({ advanced: [{ torch: true }] });
+    await track.applyConstraints({ advanced: [{ torch: on }] });
+    return true;
   } catch {
     // Some devices report torch support but reject the constraint anyway.
+    return false;
+  }
+}
+
+// Wires a torch icon button. On a device that actually supports it (torch
+// starts on already, via enableTorchIfAvailable), this toggles it off/on. On
+// iOS and anything else without the capability, there's no API to fall back
+// to - tapping it instead reveals a tip pointing the driver at their phone's
+// own flashlight control, since that's the ceiling of what a web page can do.
+export function wireTorchButton(torchBtn, tipEl, stream) {
+  if (isTorchSupported(stream)) {
+    let torchOn = true;
+    torchBtn.classList.add('torch-on');
+    torchBtn.onclick = async () => {
+      torchOn = !torchOn;
+      await setTorch(stream, torchOn);
+      torchBtn.classList.toggle('torch-on', torchOn);
+    };
+  } else {
+    torchBtn.onclick = () => {
+      tipEl.style.display = tipEl.style.display === 'none' ? 'block' : 'none';
+    };
   }
 }
 

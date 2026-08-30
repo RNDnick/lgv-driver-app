@@ -1,5 +1,5 @@
 import { getSteps, getLabel } from './checklists-data.js';
-import { startCamera, stopCamera, captureFrame } from './camera.js';
+import { startCamera, stopCamera, captureFrame, wireTorchButton } from './camera.js';
 import { newId } from './db.js';
 import * as sync from './sync.js';
 import { hashBlob, isNearDuplicate } from './photo-hash.js';
@@ -57,19 +57,26 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
         <div class="step-progress">Step ${stepIndex + 1} of ${steps.length}</div>
         <h2>${step.key} — ${step.title}</h2>
         <p class="instruction">${step.instruction}</p>
-        <video id="cam" playsinline autoplay muted class="camera-preview"></video>
+        <div class="camera-wrap">
+          <video id="cam" playsinline autoplay muted class="camera-preview"></video>
+          <button id="torchBtn" class="torch-btn" title="Toggle flash">🔦</button>
+        </div>
+        <p id="torchTip" class="warning" style="display:none">Your phone doesn't let apps control the flash directly. Swipe down from the top-right corner to open Control Centre and tap the flashlight icon, then come back and continue.</p>
         <button id="captureBtn" class="btn-primary btn-large">📷 Take Photo</button>
         <button id="backBtn" class="btn-secondary">Cancel</button>
       </div>
     `;
     const videoEl = root.querySelector('#cam');
     const captureBtn = root.querySelector('#captureBtn');
+    const torchBtn = root.querySelector('#torchBtn');
     try {
       stream = await startCamera(videoEl);
+      wireTorchButton(torchBtn, root.querySelector('#torchTip'), stream);
     } catch (err) {
       root.querySelector('.camera-preview').outerHTML = `<p class="error">Camera unavailable: ${err.message}. Check your browser allows camera access (HTTPS or localhost required).</p>`;
       captureBtn.disabled = true;
       captureBtn.textContent = 'Camera unavailable';
+      torchBtn.style.display = 'none';
     }
     captureBtn.onclick = async () => {
       const photo = await captureFrame(videoEl);

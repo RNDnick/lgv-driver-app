@@ -1,7 +1,7 @@
 import { newId } from './db.js';
 import * as sync from './sync.js';
 import * as backend from './backend.js';
-import { startCamera, stopCamera, captureFrame } from './camera.js';
+import { startCamera, stopCamera, captureFrame, wireTorchButton } from './camera.js';
 import { hashBlob, isNearDuplicate } from './photo-hash.js';
 
 function fmtDate(ts) {
@@ -115,7 +115,11 @@ export async function renderJobLog(root, { onExit } = {}) {
       <div class="screen">
         <h2>Proof of Delivery</h2>
         <label class="field"><span>Mileage at end</span><input id="mileageEnd" type="number" inputmode="numeric" /></label>
-        <video id="cam" playsinline autoplay muted class="camera-preview"></video>
+        <div class="camera-wrap">
+          <video id="cam" playsinline autoplay muted class="camera-preview"></video>
+          <button id="torchBtn" class="torch-btn" title="Toggle flash">🔦</button>
+        </div>
+        <p id="torchTip" class="warning" style="display:none">Your phone doesn't let apps control the flash directly. Swipe down from the top-right corner to open Control Centre and tap the flashlight icon, then come back and continue.</p>
         <button id="captureBtn" class="btn-primary btn-large">📷 Capture POD Photo</button>
         <button id="skipBtn" class="btn-secondary">Save Without Photo</button>
         <button id="cancelBtn" class="btn-secondary">Cancel</button>
@@ -123,12 +127,15 @@ export async function renderJobLog(root, { onExit } = {}) {
     `;
     const videoEl = root.querySelector('#cam');
     const captureBtn = root.querySelector('#captureBtn');
+    const torchBtn = root.querySelector('#torchBtn');
     try {
       stream = await startCamera(videoEl);
+      wireTorchButton(torchBtn, root.querySelector('#torchTip'), stream);
     } catch (err) {
       root.querySelector('.camera-preview').outerHTML = `<p class="error">Camera unavailable: ${err.message}</p>`;
       captureBtn.disabled = true;
       captureBtn.textContent = 'Camera unavailable';
+      torchBtn.style.display = 'none';
     }
     async function finish(photo, photoHash, mileageEndValue) {
       const { pending, _photos, ...jobFields } = job;

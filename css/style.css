@@ -114,12 +114,39 @@ button {
   outline: 2px solid var(--accent);
 }
 
+.camera-wrap {
+  position: relative;
+}
+
 .camera-preview {
   width: 100%;
   border-radius: 12px;
   background: black;
   aspect-ratio: 4 / 3;
   object-fit: cover;
+  display: block;
+}
+
+.torch-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(15, 17, 21, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+}
+
+.torch-btn.torch-on {
+  background: rgba(245, 158, 11, 0.85);
+  border-color: var(--accent-2);
+  opacity: 1;
 }
 
 .photo-preview {
