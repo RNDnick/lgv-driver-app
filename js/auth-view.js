@@ -7,7 +7,7 @@ export function renderAuth(root, { onAuthed } = {}) {
   function render() {
     root.innerHTML = `
       <div class="screen">
-        <h1>Trailer Uncouple/Couple</h1>
+        <h1>SafeCouple</h1>
         <h2>${mode === 'signin' ? 'Sign In' : 'Create Account'}</h2>
         ${mode === 'signup' ? `
         <label class="field"><span>Full name</span><input id="fullName" type="text" autocomplete="name" /></label>` : ''}
@@ -51,7 +51,7 @@ export function renderAuth(root, { onAuthed } = {}) {
   function renderCheckEmail(email) {
     root.innerHTML = `
       <div class="screen">
-        <h1>Trailer Uncouple/Couple</h1>
+        <h1>SafeCouple</h1>
         <h2>Check your email</h2>
         <p class="instruction">We've sent a confirmation link to ${email}. Follow it, then come back and sign in.</p>
         <button id="backBtn" class="btn-primary btn-large">Back to Sign In</button>

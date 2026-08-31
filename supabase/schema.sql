@@ -1,4 +1,4 @@
--- Trailer Uncouple/Couple: schema, RLS policies, and storage bucket.
+-- SafeCouple: schema, RLS policies, and storage bucket.
 -- Run this once in the Supabase SQL Editor for this project.
 
 -- ── profiles ────────────────────────────────────────────────────────────

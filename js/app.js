@@ -78,7 +78,7 @@ async function renderHome() {
   root.innerHTML = `
     <div class="screen">
       <div class="home-header">
-        <h1>Trailer Uncouple/Couple</h1>
+        <h1>SafeCouple</h1>
         <button id="logoutBtn" class="btn-link">Log out</button>
       </div>
       ${pendingCount ? `<p class="pending-badge">${pendingCount} record${pendingCount > 1 ? 's' : ''} waiting to sync</p>` : ''}

@@ -1,4 +1,4 @@
-# Trailer Uncouple/Couple
+# SafeCouple
 
 A mobile-first web app for LGV drivers: a photo-verified trailer coupling/uncoupling
 checklist, plus a job & delivery log. Each driver has their own private login;
