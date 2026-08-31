@@ -1,6 +1,6 @@
 {
-  "name": "Trailer Uncouple/Couple",
-  "short_name": "Trailer C/U",
+  "name": "SafeCouple",
+  "short_name": "SafeCouple",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f1115",
