@@ -1,6 +1,7 @@
 import { renderChecklistFlow } from './checklist-view.js';
 import { renderJobLog } from './joblog-view.js';
 import { renderHistory } from './history-view.js';
+import { renderChangelog } from './changelog-view.js';
 import { renderAuth } from './auth-view.js';
 import * as backend from './backend.js';
 import * as sync from './sync.js';
@@ -44,6 +45,7 @@ async function renderView(view, params = {}) {
     if (view === 'disconnect') return (cleanup = await renderChecklistFlow(root, 'disconnect', { onExit: () => history.back() }));
     if (view === 'joblog') return (cleanup = await renderJobLog(root, { onExit: () => history.back() }));
     if (view === 'history') return (cleanup = await renderHistory(root, { onExit: () => history.back(), initialRecordId: params.recordId }));
+    if (view === 'changelog') return renderChangelog(root, { onExit: () => history.back() });
   } catch (err) {
     root.innerHTML = `
       <div class="screen">
@@ -116,7 +118,7 @@ async function renderHome() {
           </div>
         `).join('')}
       </div>` : ''}
-      <p class="muted small version-tag">v${APP_VERSION}</p>
+      <p class="version-tag"><button id="whatsNewBtn" class="btn-link">v${APP_VERSION} · What's New</button></p>
     </div>
   `;
   root.querySelector('#connectBtn').onclick = () => go('connect');
@@ -124,6 +126,7 @@ async function renderHome() {
   root.querySelector('#joblogBtn').onclick = () => go('joblog');
   root.querySelector('#historyBtn').onclick = () => go('history');
   root.querySelector('#logoutBtn').onclick = () => backend.signOut();
+  root.querySelector('#whatsNewBtn').onclick = () => go('changelog');
   root.querySelectorAll('.list-item').forEach(el => {
     el.onclick = () => go('history', { recordId: el.dataset.id });
   });
