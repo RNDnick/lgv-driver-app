@@ -1,9 +1,12 @@
-import { newId } from './db.js';
+import { newId, dbGet, dbPut, dbDelete } from './db.js';
 import * as sync from './sync.js';
 import * as backend from './backend.js';
 import { startCamera, stopCamera, captureFrame, wireTorchButton } from './camera.js';
 import { hashBlob, isNearDuplicate } from './photo-hash.js';
 import { createSubRouter } from './subrouter.js';
+
+const FORM_DRAFT_ID = 'draft-job-form';
+const FORM_FIELDS = ['customer', 'collectionSite', 'deliverySite', 'trailerReg', 'mileageStart', 'notes'];
 
 function fmtDate(ts) {
   return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -20,8 +23,27 @@ export async function renderJobLog(root, { onExit } = {}) {
   }
 
   function hasFormData() {
-    return ['customer', 'collectionSite', 'deliverySite', 'trailerReg', 'mileageStart', 'notes']
-      .some(id => (root.querySelector('#' + id)?.value || '').trim() !== '');
+    return FORM_FIELDS.some(id => (root.querySelector('#' + id)?.value || '').trim() !== '');
+  }
+
+  // The New Job form has no intermediate checkpoint like the checklist flow
+  // does - nothing was saved until the final Save Job click, so a screen
+  // lock discarding the page mid-form lost everything typed. Checkpoint to
+  // IndexedDB as the driver types (debounced) so a reload can restore it.
+  async function saveFormDraft() {
+    const draft = { id: FORM_DRAFT_ID, updatedAt: Date.now() };
+    for (const id of FORM_FIELDS) draft[id] = root.querySelector('#' + id)?.value.trim() || '';
+    if (FORM_FIELDS.some(id => draft[id])) {
+      await dbPut('drafts', draft);
+    } else {
+      await dbDelete('drafts', FORM_DRAFT_ID);
+    }
+  }
+
+  let formDraftTimer = null;
+  function scheduleFormDraftSave() {
+    clearTimeout(formDraftTimer);
+    formDraftTimer = setTimeout(saveFormDraft, 400);
   }
 
   function hasCompleteProgress() {
@@ -31,10 +53,16 @@ export async function renderJobLog(root, { onExit } = {}) {
 
   async function renderList() {
     activeScreen = { screen: null };
-    const jobs = await sync.getMergedJobs();
+    const [jobs, formDraft] = await Promise.all([sync.getMergedJobs(), dbGet('drafts', FORM_DRAFT_ID)]);
     root.innerHTML = `
       <div class="screen">
         <h2>Job &amp; Delivery Log</h2>
+        ${formDraft ? `
+        <p class="pending-badge">
+          Unsaved new job from ${fmtDate(formDraft.updatedAt)}${formDraft.customer ? ` (${formDraft.customer})` : ''}.
+          <button id="resumeFormBtn" class="btn-link">Resume</button> ·
+          <button id="discardFormBtn" class="btn-link">Discard</button>
+        </p>` : ''}
         <button id="newJobBtn" class="btn-primary btn-large">+ New Job</button>
         <div class="list">
           ${jobs.length === 0 ? '<p class="muted">No jobs logged yet.</p>' : jobs.map(j => `
@@ -56,6 +84,16 @@ export async function renderJobLog(root, { onExit } = {}) {
       sub.push({ screen: 'form' });
       renderForm();
     };
+    if (formDraft) {
+      root.querySelector('#resumeFormBtn').onclick = () => {
+        sub.push({ screen: 'form' });
+        renderForm(formDraft);
+      };
+      root.querySelector('#discardFormBtn').onclick = async () => {
+        await dbDelete('drafts', FORM_DRAFT_ID);
+        renderList();
+      };
+    }
     root.querySelectorAll('.list-item').forEach(el => {
       el.onclick = () => {
         sub.push({ screen: 'detail', id: el.dataset.id });
@@ -65,22 +103,23 @@ export async function renderJobLog(root, { onExit } = {}) {
     root.querySelector('#backBtn').onclick = () => onExit && onExit();
   }
 
-  function renderForm() {
+  function renderForm(draft) {
     activeScreen = { screen: 'form' };
     root.innerHTML = `
       <div class="screen">
         <h2>New Job</h2>
-        <label class="field"><span>Customer / Site name</span><input id="customer" type="text" /></label>
-        <label class="field"><span>Collection site</span><input id="collectionSite" type="text" /></label>
-        <label class="field"><span>Delivery site</span><input id="deliverySite" type="text" /></label>
-        <label class="field"><span>Trailer registration</span><input id="trailerReg" type="text" /></label>
+        <label class="field"><span>Customer / Site name</span><input id="customer" type="text" value="${draft?.customer || ''}" /></label>
+        <label class="field"><span>Collection site</span><input id="collectionSite" type="text" value="${draft?.collectionSite || ''}" /></label>
+        <label class="field"><span>Delivery site</span><input id="deliverySite" type="text" value="${draft?.deliverySite || ''}" /></label>
+        <label class="field"><span>Trailer registration</span><input id="trailerReg" type="text" value="${draft?.trailerReg || ''}" /></label>
         <p id="formError" class="error" style="display:none">Trailer registration is required.</p>
-        <label class="field"><span>Mileage at start</span><input id="mileageStart" type="number" inputmode="numeric" /></label>
-        <label class="field"><span>Notes</span><textarea id="notes" rows="3"></textarea></label>
+        <label class="field"><span>Mileage at start</span><input id="mileageStart" type="number" inputmode="numeric" value="${draft?.mileageStart || ''}" /></label>
+        <label class="field"><span>Notes</span><textarea id="notes" rows="3">${draft?.notes || ''}</textarea></label>
         <button id="saveBtn" class="btn-primary btn-large">Save Job</button>
         <button id="cancelBtn" class="btn-secondary">Cancel</button>
       </div>
     `;
+    FORM_FIELDS.forEach(id => root.querySelector('#' + id)?.addEventListener('input', scheduleFormDraftSave));
     root.querySelector('#saveBtn').onclick = async () => {
       const trailerReg = root.querySelector('#trailerReg').value.trim();
       if (!trailerReg) {
@@ -102,11 +141,13 @@ export async function renderJobLog(root, { onExit } = {}) {
         completedAt: null,
       };
       await sync.enqueue('job', job, {});
+      await dbDelete('drafts', FORM_DRAFT_ID);
       skipNextGuard = true;
       history.back();
     };
-    root.querySelector('#cancelBtn').onclick = () => {
+    root.querySelector('#cancelBtn').onclick = async () => {
       if (hasFormData() && !window.confirm('Discard this new job? The details you entered will be lost.')) return;
+      await dbDelete('drafts', FORM_DRAFT_ID);
       skipNextGuard = true;
       history.back();
     };
@@ -235,7 +276,7 @@ export async function renderJobLog(root, { onExit } = {}) {
     };
   }
 
-  sub.onPop(screen => {
+  sub.onPop(async screen => {
     const previous = activeScreen;
     if (!skipNextGuard) {
       if (previous.screen === 'form' && hasFormData() && !window.confirm('Discard this new job? The details you entered will be lost.')) {
@@ -246,6 +287,12 @@ export async function renderJobLog(root, { onExit } = {}) {
         sub.push(previous);
         return;
       }
+    }
+    // Reaching here from 'form' means it's genuinely being left - either
+    // empty, or the driver just confirmed discarding it - so the checkpoint
+    // shouldn't linger and reappear as a stale "resume" offer next visit.
+    if (previous.screen === 'form') {
+      await dbDelete('drafts', FORM_DRAFT_ID);
     }
     skipNextGuard = false;
     if (screen && screen.screen === 'detail') {
