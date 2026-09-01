@@ -126,6 +126,8 @@ button {
 
 .camera-wrap {
   position: relative;
+  overflow: hidden;
+  border-radius: 12px;
 }
 
 .camera-preview {
@@ -135,12 +137,13 @@ button {
   aspect-ratio: 4 / 3;
   object-fit: cover;
   display: block;
+  transform-origin: center;
+  transition: transform 0.15s ease-out;
 }
 
-.torch-btn {
+.torch-btn, .zoom-btn {
   position: absolute;
   top: 12px;
-  right: 12px;
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -151,7 +154,12 @@ button {
   align-items: center;
   justify-content: center;
   opacity: 0.6;
+  color: var(--text);
 }
+
+.torch-btn { right: 12px; }
+.zoom-btn { left: 12px; font-size: 0.85rem; font-weight: 700; }
+.zoom-btn.zoom-active { opacity: 1; background: rgba(37, 99, 235, 0.85); border-color: var(--accent); }
 
 .torch-btn.torch-on {
   background: rgba(245, 158, 11, 0.85);

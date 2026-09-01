@@ -57,6 +57,16 @@ expose flash control to web apps at all, so on an iPhone the driver will need to
 provide their own light (phone torch via Control Centre, work light, etc.)
 before taking those photos.
 
+Each camera screen also has a zoom button (top-left of the preview, tap to
+cycle 1x/2x/3x) — useful for the Kingpin photo especially, since the driver
+has to reverse fully under the trailer before shooting it, often leaving it
+further away and smaller in frame than the other steps. Uses the phone's real
+optical/hardware zoom where the browser exposes one (mainly Android Chrome,
+full resolution); falls back to a digital crop-and-scale everywhere else
+(notably iOS, which has no zoom API for web apps either) — works everywhere,
+just with a little less sharpness at higher zoom on devices using the
+fallback.
+
 ## Backend setup (Supabase)
 
 This app talks directly to a Supabase project (Postgres + Auth + Storage) from

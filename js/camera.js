@@ -63,10 +63,64 @@ export function stopCamera(stream) {
   stream.getTracks().forEach(track => track.stop());
 }
 
-export function captureFrame(videoEl) {
+// zoomLevel > 1 crops a centered region of the frame and scales it back up to
+// the original dimensions - the digital-zoom fallback path. Hardware zoom
+// (see createZoomControl below) already produces a zoomed frame from the
+// camera itself, so callers pass 1 there and this just captures normally.
+export function captureFrame(videoEl, zoomLevel = 1) {
   const canvas = document.createElement('canvas');
-  canvas.width = videoEl.videoWidth;
-  canvas.height = videoEl.videoHeight;
-  canvas.getContext('2d').drawImage(videoEl, 0, 0);
+  const vw = videoEl.videoWidth;
+  const vh = videoEl.videoHeight;
+  canvas.width = vw;
+  canvas.height = vh;
+  const ctx = canvas.getContext('2d');
+  if (zoomLevel > 1) {
+    const cropW = vw / zoomLevel;
+    const cropH = vh / zoomLevel;
+    const sx = (vw - cropW) / 2;
+    const sy = (vh - cropH) / 2;
+    ctx.drawImage(videoEl, sx, sy, cropW, cropH, 0, 0, vw, vh);
+  } else {
+    ctx.drawImage(videoEl, 0, 0);
+  }
   return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+}
+
+const ZOOM_LEVELS = [1, 2, 3];
+
+// Kingpin photos in particular are taken from well back (the driver has to
+// reverse fully under the trailer first), so the subject can end up small and
+// unclear in frame. Prefers the camera's real hardware zoom where the device
+// exposes one (full resolution, no quality loss); falls back to a digital
+// crop-and-scale of the preview/capture everywhere else (mainly iOS, which -
+// like torch - has no zoom API for web apps at all).
+export function createZoomControl(zoomBtn, videoEl, stream) {
+  const track = stream?.getVideoTracks()[0];
+  const capabilities = track?.getCapabilities?.();
+  const hardwareZoom = capabilities?.zoom;
+  let index = 0;
+
+  zoomBtn.textContent = `${ZOOM_LEVELS[index]}x`;
+
+  zoomBtn.onclick = async () => {
+    index = (index + 1) % ZOOM_LEVELS.length;
+    const level = ZOOM_LEVELS[index];
+    zoomBtn.classList.toggle('zoom-active', level > 1);
+    if (hardwareZoom) {
+      const target = Math.min(hardwareZoom.max, Math.max(hardwareZoom.min, level));
+      try {
+        await track.applyConstraints({ advanced: [{ zoom: target }] });
+      } catch {
+        // Ignore - button label still reflects the requested level below.
+      }
+      zoomBtn.textContent = `${target}x`;
+    } else {
+      videoEl.style.transform = `scale(${level})`;
+      zoomBtn.textContent = `${level}x`;
+    }
+  };
+
+  return {
+    getDigitalZoomLevel: () => (hardwareZoom ? 1 : ZOOM_LEVELS[index]),
+  };
 }
