@@ -26,6 +26,13 @@ data is synced to a shared Supabase backend so it isn't stuck on one device.
 
 A checklist run can optionally be linked to an open job.
 
+- **Survives a screen lock mid-checklist** — a phone locking or backgrounding
+  the app can discard the page from memory entirely, not just pause it, which
+  would otherwise silently wipe an in-progress checklist. Every confirmed step
+  is checkpointed to on-device storage immediately, so reopening a Connect/Drop
+  Trailer checklist that was interrupted mid-way offers to resume exactly where
+  it left off, photos included, instead of losing them.
+
 ## Running it
 
 ```powershell
