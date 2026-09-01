@@ -13,6 +13,15 @@
 
 * { box-sizing: border-box; }
 
+.app-footer {
+  max-width: 480px;
+  margin: 0 auto;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+  padding: 0 16px 20px;
+}
+
 html, body {
   margin: 0;
   padding: 0;

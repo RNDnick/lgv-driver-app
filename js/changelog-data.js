@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.9.1',
+    date: '1 Sep 2026',
+    summary: 'Added a copyright notice at the bottom of every screen.',
+  },
+  {
     version: '1.9.0',
     date: '1 Sep 2026',
     summary: "Added this What's New page - tap the version number on the home screen any time to see what's changed recently.",
