@@ -144,3 +144,20 @@ create policy "checklist_photos_insert" on storage.objects
     bucket_id = 'checklist-photos'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- Uploads use upsert:true so a retry after a partial sync failure safely
+-- re-uploads to the same deterministic path rather than erroring on
+-- "already exists" - which needs update permission on top of insert, not
+-- just insert, or every retry past the first successful photo in a given
+-- attempt fails with a permission error indistinguishable from an auth
+-- problem. Photos are otherwise still effectively immutable in practice:
+-- nothing in the app lets a driver edit a checklist once its row exists.
+create policy "checklist_photos_update" on storage.objects
+  for update using (
+    bucket_id = 'checklist-photos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  with check (
+    bucket_id = 'checklist-photos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
