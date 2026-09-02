@@ -35,6 +35,10 @@ export async function getPendingCount() {
   return (await dbGetAll(STORE)).length;
 }
 
+export async function getAllPending() {
+  return dbGetAll(STORE);
+}
+
 let flushing = false;
 
 export async function flushOutbox() {

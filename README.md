@@ -18,7 +18,10 @@ data is synced to a shared Supabase backend so it isn't stuck on one device.
   full-screen — tap outside it or use back to return to exactly where you were.
 - **Offline-safe saves** — every save writes to a local queue first and syncs to
   the backend automatically once you have a signal, so nothing is lost if you're
-  in a poor-signal yard when you finish a check.
+  in a poor-signal yard when you finish a check. Tap the "records waiting to
+  sync" banner on the home screen to see exactly what's queued, why it hasn't
+  gone through yet if it's actually failing (not just waiting for signal), and
+  to trigger a retry immediately with "Sync Now".
 - **Same-day duplicate photo warning** — each photo is fingerprinted on-device
   (a perceptual hash, not the exact bytes) and compared against your other
   photos from *today only* for that same step. A near-identical match shows a

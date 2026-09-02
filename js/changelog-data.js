@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.12.0',
+    date: '2 Sep 2026',
+    summary: "The \"records waiting to sync\" banner on the home screen is now tappable, showing exactly which checklists/jobs haven't synced yet, why (if it's actually failing rather than just waiting for signal), and a \"Sync Now\" button to retry immediately.",
+  },
+  {
     version: '1.11.0',
     date: '2 Sep 2026',
     summary: 'Tap any photo (in History, a finished checklist summary, or a delivery photo) to see it full-screen. Tap outside the photo, or use back, to close it and return to exactly where you were.',
