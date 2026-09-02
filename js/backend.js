@@ -123,11 +123,11 @@ export async function syncJob(job, photos = {}) {
     const { error } = await supabase.storage
       .from(BUCKET)
       .upload(podPhotoPath, photos.pod, { upsert: true, contentType: 'image/jpeg' });
-    if (error) throw error;
+    if (error) throw new Error(`Photo upload failed: ${error.message}`);
   }
 
   const { error } = await supabase.from('jobs').upsert(toJobRow({ ...job, podPhotoPath }, driverId));
-  if (error) throw error;
+  if (error) throw new Error(`Saving job record failed: ${error.message}`);
 }
 
 export async function deleteJob(id) {
@@ -167,7 +167,7 @@ export async function syncChecklist(record, photos = {}) {
       const { error } = await supabase.storage
         .from(BUCKET)
         .upload(photoPath, blob, { upsert: true, contentType: 'image/jpeg' });
-      if (error) throw error;
+      if (error) throw new Error(`Photo upload failed (step ${step.key}): ${error.message}`);
     }
     steps.push({ key: step.key, title: step.title, completedAt: step.completedAt, photoPath, photoHash: step.photoHash || null });
   }
@@ -183,7 +183,7 @@ export async function syncChecklist(record, photos = {}) {
     steps,
   };
   const { error } = await supabase.from('checklists').upsert(row);
-  if (error) throw error;
+  if (error) throw new Error(`Saving checklist record failed: ${error.message}`);
 }
 
 export async function getPhotoUrl(path, expiresIn = 3600) {

@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.12.1',
+    date: '2 Sep 2026',
+    summary: 'Sync error messages on the Sync Status screen are now more specific about which step failed (uploading a photo vs. saving the record), to help track down stubborn sync failures.',
+  },
+  {
     version: '1.12.0',
     date: '2 Sep 2026',
     summary: "The \"records waiting to sync\" banner on the home screen is now tappable, showing exactly which checklists/jobs haven't synced yet, why (if it's actually failing rather than just waiting for signal), and a \"Sync Now\" button to retry immediately.",
