@@ -5,6 +5,7 @@ import * as sync from './sync.js';
 import { hashBlob, isNearDuplicate } from './photo-hash.js';
 import { createSubRouter } from './subrouter.js';
 import { setLeaveGuard, clearLeaveGuard } from './nav-guard.js';
+import { openLightbox, handleLightboxPop } from './lightbox.js';
 
 function fmtDate(ts) {
   return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -224,9 +225,9 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
         <h2>${getLabel(type)} — Complete</h2>
         <p class="instruction">All ${captures.length} steps recorded with photo evidence.</p>
         <div class="thumb-grid">
-          ${captures.map(c => `
+          ${captures.map((c, i) => `
             <div class="thumb">
-              <img src="${URL.createObjectURL(c.photo)}" alt="${c.title}" />
+              <img src="${URL.createObjectURL(c.photo)}" alt="${c.title}" data-index="${i}" />
               <span>${c.key} · ${c.title}</span>
             </div>
           `).join('')}
@@ -235,6 +236,12 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
         <button id="discardBtn" class="btn-secondary">Discard</button>
       </div>
     `;
+    root.querySelectorAll('.thumb img').forEach(img => {
+      img.onclick = () => {
+        const c = captures[Number(img.dataset.index)];
+        openLightbox(sub, { index }, URL.createObjectURL(c.photo), c.title);
+      };
+    });
     root.querySelector('#saveBtn').onclick = async () => {
       const record = {
         id: newId(),
@@ -259,6 +266,7 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
   }
 
   sub.onPop(screen => {
+    if (handleLightboxPop(screen)) return;
     if (screen && typeof screen.index === 'number') {
       renderStepOrReview(screen.index);
     } else {

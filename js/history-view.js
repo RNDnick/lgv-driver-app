@@ -2,6 +2,7 @@ import * as sync from './sync.js';
 import * as backend from './backend.js';
 import { getLabel } from './checklists-data.js';
 import { createSubRouter } from './subrouter.js';
+import { openLightbox, handleLightboxPop } from './lightbox.js';
 
 function fmtDate(ts) {
   return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -57,7 +58,7 @@ export async function renderHistory(root, { onExit, initialRecordId } = {}) {
         <div class="thumb-grid">
           ${record.steps.map((s, i) => `
             <div class="thumb">
-              <img src="${stepPhotoUrls[i] || ''}" alt="${s.title}" />
+              <img src="${stepPhotoUrls[i] || ''}" alt="${s.title}" data-index="${i}" />
               <span>${s.key} · ${s.title}</span>
             </div>
           `).join('')}
@@ -65,10 +66,18 @@ export async function renderHistory(root, { onExit, initialRecordId } = {}) {
         <button id="backBtn" class="btn-secondary">Back</button>
       </div>
     `;
+    root.querySelectorAll('.thumb img').forEach(img => {
+      if (!img.src) return;
+      img.onclick = () => {
+        const i = Number(img.dataset.index);
+        openLightbox(sub, { screen: 'detail', id: record.id }, stepPhotoUrls[i], record.steps[i].title);
+      };
+    });
     root.querySelector('#backBtn').onclick = () => history.back();
   }
 
   sub.onPop(screen => {
+    if (handleLightboxPop(screen)) return;
     if (screen && screen.screen === 'detail') {
       const record = records.find(r => r.id === screen.id);
       if (record) return renderDetail(record);

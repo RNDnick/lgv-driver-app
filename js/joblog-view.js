@@ -4,6 +4,7 @@ import * as backend from './backend.js';
 import { startCamera, stopCamera, captureFrame, wireTorchButton, createZoomControl } from './camera.js';
 import { hashBlob, isNearDuplicate } from './photo-hash.js';
 import { createSubRouter } from './subrouter.js';
+import { openLightbox, handleLightboxPop } from './lightbox.js';
 
 const FORM_DRAFT_ID = 'draft-job-form';
 const FORM_FIELDS = ['customer', 'collectionSite', 'deliverySite', 'trailerReg', 'mileageStart', 'notes'];
@@ -182,6 +183,11 @@ export async function renderJobLog(root, { onExit } = {}) {
         renderComplete(job);
       };
     }
+    if (photoUrl) {
+      root.querySelector('.photo-preview').onclick = () => {
+        openLightbox(sub, { screen: 'detail', id: job.id }, photoUrl, 'Proof of delivery');
+      };
+    }
     root.querySelector('#deleteBtn').onclick = async () => {
       if (job.pending) {
         await sync.cancelPending(job.id);
@@ -282,6 +288,7 @@ export async function renderJobLog(root, { onExit } = {}) {
   }
 
   sub.onPop(async screen => {
+    if (handleLightboxPop(screen)) return;
     const previous = activeScreen;
     if (!skipNextGuard) {
       if (previous.screen === 'form' && hasFormData() && !window.confirm('Discard this new job? The details you entered will be lost.')) {

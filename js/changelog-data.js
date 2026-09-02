@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.11.0',
+    date: '2 Sep 2026',
+    summary: 'Tap any photo (in History, a finished checklist summary, or a delivery photo) to see it full-screen. Tap outside the photo, or use back, to close it and return to exactly where you were.',
+  },
+  {
     version: '1.10.0',
     date: '1 Sep 2026',
     summary: "Added a zoom button on the camera screen (tap to cycle 1x/2x/3x) - handy for the Kingpin photo, which often has to be taken from further back than the other steps.",

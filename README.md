@@ -13,7 +13,9 @@ data is synced to a shared Supabase backend so it isn't stuck on one device.
   order for uncoupling.
 - **Job & Delivery Log** — log collection/delivery sites, trailer reg, mileage,
   notes, and capture a proof-of-delivery photo when a job completes.
-- **History** — browse past checklist runs and their photos.
+- **History** — browse past checklist runs and their photos. Tap any photo
+  (here, a finished checklist's summary, or a delivery photo) to view it
+  full-screen — tap outside it or use back to return to exactly where you were.
 - **Offline-safe saves** — every save writes to a local queue first and syncs to
   the backend automatically once you have a signal, so nothing is lost if you're
   in a poor-signal yard when you finish a check.
