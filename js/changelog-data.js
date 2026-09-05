@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.16.0',
+    date: '5 Sep 2026',
+    summary: "Added a Manager Dashboard (visible only on a manager account) - every driver's checklists, jobs and feedback in one place, tagged with who did what, with full photo evidence. History and Job Log go back to showing just your own records, like every driver sees. Also fixed a bug where switching apps and back could silently bounce you to the home screen mid-task.",
+  },
+  {
     version: '1.15.0',
     date: '5 Sep 2026',
     summary: "Added a Feedback link under the version number on the home screen - tap it any time to send through a bug report or an idea, offline-safe like everything else. It's sent with your name attached so we can follow up if needed.",

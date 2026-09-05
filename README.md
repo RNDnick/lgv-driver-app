@@ -85,8 +85,14 @@ fallback.
 - **Feedback** — a link under the version number on the home screen lets a
   driver send through a bug report or an idea any time. Sent the same
   offline-safe way as everything else, and attributed to that driver (not
-  anonymous) so a manager can follow up. A manager account sees everyone's
-  submitted feedback on that same screen.
+  anonymous) so a manager can follow up.
+- **Manager Dashboard** — a manager account (see below) gets an extra home
+  screen tile showing every driver's checklists, jobs, and submitted feedback
+  in one place, each tagged with who it belongs to. Tapping a checklist shows
+  its full photo evidence, same as History does for your own. Every other
+  screen (History, Job Log, the home screen's recent-activity list) only ever
+  shows your own records, manager account or not — the Dashboard is the one
+  place that shows everyone's.
 
 ## Backend setup (Supabase)
 

@@ -78,12 +78,12 @@ async function mergeWithPending(kind, synced, sortKey) {
 }
 
 export async function getMergedJobs() {
-  const synced = await backend.getAllJobs();
+  const synced = await backend.getMyJobs();
   return mergeWithPending('job', synced, 'createdAt');
 }
 
 export async function getMergedChecklists() {
-  const synced = await backend.getAllChecklists();
+  const synced = await backend.getMyChecklists();
   return mergeWithPending('checklist', synced, 'completedAt');
 }
 

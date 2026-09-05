@@ -106,10 +106,41 @@ export async function getTodaysChecklists() {
   return data.map(fromChecklistRow);
 }
 
-export async function getAllJobs() {
-  const { data, error } = await supabase.from('jobs').select('*').order('created_at', { ascending: false });
+// Resolves driver_id -> full_name for a manager-only "all drivers" fetch -
+// RLS lets a manager read every profile, so this is a bulk lookup rather
+// than N+1 queries per row.
+async function namesByDriverId(driverIds) {
+  const unique = [...new Set(driverIds)];
+  if (!unique.length) return {};
+  const { data, error } = await supabase.from('profiles').select('id, full_name').in('id', unique);
+  if (error) throw error;
+  return Object.fromEntries(data.map(p => [p.id, p.full_name || 'Unnamed driver']));
+}
+
+// Own records only - RLS would actually let a manager account fetch every
+// driver's rows here too, but Home/History/Job Log are meant to show "my own
+// activity" for every account, manager included. The all-drivers equivalent
+// (getAllJobsForManager) is a separate function so that distinction is
+// explicit at the call site, not just an incidental side effect of RLS.
+export async function getMyJobs() {
+  const session = await getSession();
+  if (!session) return [];
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('*')
+    .eq('driver_id', session.user.id)
+    .order('created_at', { ascending: false });
   if (error) throw error;
   return data.map(fromJobRow);
+}
+
+// Manager-only (see js/manager-view.js) - gated by that screen only being
+// reachable from a manager-only home tile, not by anything here.
+export async function getAllJobsForManager() {
+  const { data, error } = await supabase.from('jobs').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  const names = await namesByDriverId(data.map(row => row.driver_id));
+  return data.map(row => ({ ...fromJobRow(row), driverName: names[row.driver_id] || 'Unknown driver' }));
 }
 
 export async function syncJob(job, photos = {}) {
@@ -147,10 +178,26 @@ function fromChecklistRow(row) {
   };
 }
 
-export async function getAllChecklists() {
-  const { data, error } = await supabase.from('checklists').select('*').order('completed_at', { ascending: false });
+// Own records only - see the comment on getMyJobs above for why this isn't
+// just left to RLS.
+export async function getMyChecklists() {
+  const session = await getSession();
+  if (!session) return [];
+  const { data, error } = await supabase
+    .from('checklists')
+    .select('*')
+    .eq('driver_id', session.user.id)
+    .order('completed_at', { ascending: false });
   if (error) throw error;
   return data.map(fromChecklistRow);
+}
+
+// Manager-only (see js/manager-view.js).
+export async function getAllChecklistsForManager() {
+  const { data, error } = await supabase.from('checklists').select('*').order('completed_at', { ascending: false });
+  if (error) throw error;
+  const names = await namesByDriverId(data.map(row => row.driver_id));
+  return data.map(row => ({ ...fromChecklistRow(row), driverName: names[row.driver_id] || 'Unknown driver' }));
 }
 
 export async function syncChecklist(record, photos = {}) {
@@ -204,16 +251,10 @@ export async function syncFeedback(feedback) {
 export async function getAllFeedback() {
   const { data, error } = await supabase.from('feedback').select('*').order('created_at', { ascending: false });
   if (error) throw error;
-  const driverIds = [...new Set(data.map(row => row.driver_id))];
-  let namesById = {};
-  if (driverIds.length) {
-    const { data: profiles, error: profileErr } = await supabase.from('profiles').select('id, full_name').in('id', driverIds);
-    if (profileErr) throw profileErr;
-    namesById = Object.fromEntries(profiles.map(p => [p.id, p.full_name]));
-  }
+  const names = await namesByDriverId(data.map(row => row.driver_id));
   return data.map(row => ({
     id: row.id,
-    driverName: namesById[row.driver_id] || 'Unknown driver',
+    driverName: names[row.driver_id] || 'Unknown driver',
     message: row.message,
     createdAt: row.created_at,
   }));

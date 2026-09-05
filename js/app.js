@@ -4,6 +4,7 @@ import { renderHistory } from './history-view.js';
 import { renderChangelog } from './changelog-view.js';
 import { renderSyncStatus } from './sync-status-view.js';
 import { renderFeedback } from './feedback-view.js';
+import { renderManagerDashboard } from './manager-view.js';
 import { renderAuth } from './auth-view.js';
 import * as backend from './backend.js';
 import * as sync from './sync.js';
@@ -52,6 +53,7 @@ async function renderView(view, params = {}) {
     if (view === 'changelog') return renderChangelog(root, { onExit: () => history.back() });
     if (view === 'sync-status') return renderSyncStatus(root, { onExit: () => history.back() });
     if (view === 'feedback') return await renderFeedback(root, { onExit: () => history.back() });
+    if (view === 'manager') return (cleanup = await renderManagerDashboard(root, { onExit: () => history.back() }));
   } catch (err) {
     root.innerHTML = `
       <div class="screen">
@@ -75,13 +77,15 @@ function resetToHome() {
 }
 
 async function renderHome() {
-  const [jobs, checklists, pendingCount] = await Promise.all([
+  const [jobs, checklists, pendingCount, profile] = await Promise.all([
     sync.getMergedJobs(),
     sync.getMergedChecklists(),
     sync.getPendingCount(),
+    backend.getCurrentProfile(),
   ]);
   const openJobs = jobs.filter(j => j.status === 'open').length;
   const recent = checklists.slice(0, RECENT_CHECKLISTS_COUNT);
+  const isManager = profile?.role === 'manager';
 
   root.innerHTML = `
     <div class="screen">
@@ -120,6 +124,11 @@ async function renderHome() {
           <span class="tile-icon">🕒</span>
           <span>History</span>
         </button>
+        ${isManager ? `
+        <button class="tile" id="managerBtn">
+          <span class="tile-icon">📊</span>
+          <span>Manager Dashboard</span>
+        </button>` : ''}
       </div>
       ${recent.length ? `
       <h3>Recent checklists</h3>
@@ -144,6 +153,7 @@ async function renderHome() {
   root.querySelector('#closeDisconnectBtn').onclick = () => go('close-disconnect');
   root.querySelector('#joblogBtn').onclick = () => go('joblog');
   root.querySelector('#historyBtn').onclick = () => go('history');
+  root.querySelector('#managerBtn')?.addEventListener('click', () => go('manager'));
   root.querySelector('#logoutBtn').onclick = () => backend.signOut();
   root.querySelector('#whatsNewBtn').onclick = () => go('changelog');
   root.querySelector('#feedbackBtn').onclick = () => go('feedback');
@@ -153,8 +163,19 @@ async function renderHome() {
   });
 }
 
+// Supabase re-emits a session on this listener not just for a genuine
+// sign-in, but also silently when the tab regains focus/visibility and it
+// re-validates an already-valid session - without this flag, that spurious
+// event would call resetToHome() and yank the driver back to Home off
+// whatever screen they were on (mid-checklist included) just from switching
+// apps or the screen locking briefly. Only a real signed-out -> signed-in
+// transition should reset navigation; an already-signed-in tab re-confirming
+// its session is a no-op here.
+let hasSession = false;
+
 async function boot() {
   const session = await backend.getSession();
+  hasSession = !!session;
   if (session) {
     resetToHome();
   } else {
@@ -163,9 +184,11 @@ async function boot() {
 }
 
 backend.onAuthChange(session => {
-  if (session) {
+  if (session && !hasSession) {
+    hasSession = true;
     resetToHome();
-  } else {
+  } else if (!session) {
+    hasSession = false;
     showAuth();
   }
 });
