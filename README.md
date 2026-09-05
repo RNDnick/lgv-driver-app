@@ -36,6 +36,11 @@ data is synced to a shared Supabase backend so it isn't stuck on one device.
 
 A checklist run can optionally be linked to an open job.
 
+- **Timestamped photos** — every photo (each checklist step, and the delivery
+  proof-of-delivery photo) gets a `YY-MM-DD-HH-MM-SS` timestamp burned into the
+  bottom-right corner, in the phone's local time, so there's a permanent visual
+  record of exactly when each photo was taken.
+
 - **Survives a screen lock mid-checklist or mid-form** — a phone locking or
   backgrounding the app can discard the page from memory entirely, not just
   pause it, which would otherwise silently wipe whatever was in progress. A

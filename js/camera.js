@@ -63,6 +63,31 @@ export function stopCamera(stream) {
   stream.getTracks().forEach(track => track.stop());
 }
 
+// Burns a "YY-MM-DD-HH-MM-SS" timestamp into the bottom-right corner, in the
+// device's local time - this is evidence of when a check was actually done,
+// so it needs to be part of the pixels, not just EXIF/metadata that gets
+// stripped by re-uploads or messaging apps and that nobody but us ever reads.
+function stampTimestamp(ctx, width, height) {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const text = `${String(now.getFullYear()).slice(-2)}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+
+  const fontSize = Math.round(width * 0.032);
+  ctx.font = `600 ${fontSize}px -apple-system, "Segoe UI", Roboto, sans-serif`;
+  ctx.textBaseline = 'bottom';
+  const textWidth = ctx.measureText(text).width;
+
+  const margin = Math.round(fontSize * 0.5); // gap from the photo's edge
+  const boxPad = Math.round(fontSize * 0.18); // gap from the box to the text itself
+  const x = width - margin - textWidth;
+  const y = height - margin;
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.fillRect(x - boxPad, y - fontSize - boxPad * 0.6, textWidth + boxPad * 2, fontSize + boxPad * 1.6);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(text, x, y);
+}
+
 // zoomLevel > 1 crops a centered region of the frame and scales it back up to
 // the original dimensions - the digital-zoom fallback path. Hardware zoom
 // (see createZoomControl below) already produces a zoomed frame from the
@@ -83,6 +108,7 @@ export function captureFrame(videoEl, zoomLevel = 1) {
   } else {
     ctx.drawImage(videoEl, 0, 0);
   }
+  stampTimestamp(ctx, vw, vh);
   return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
 }
 

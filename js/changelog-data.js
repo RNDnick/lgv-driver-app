@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.14.0',
+    date: '5 Sep 2026',
+    summary: 'Every photo now gets a timestamp (YY-MM-DD-HH-MM-SS, your phone\'s local time) burned into the bottom-right corner - checklist steps and the delivery photo alike - so there\'s a permanent record of exactly when each check was done.',
+  },
+  {
     version: '1.13.1',
     date: '5 Sep 2026',
     summary: 'Standard Uncoupling and Close Uncoupling now pre-fill the trailer registration from your last matching coupling, so you don’t have to type it again - still editable if it’s wrong.',
