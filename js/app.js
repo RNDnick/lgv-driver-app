@@ -6,7 +6,7 @@ import { renderSyncStatus } from './sync-status-view.js';
 import { renderAuth } from './auth-view.js';
 import * as backend from './backend.js';
 import * as sync from './sync.js';
-import { getLabel } from './checklists-data.js';
+import { getLabel, getMnemonic } from './checklists-data.js';
 import { APP_VERSION } from './version.js';
 import { checkLeaveGuard, clearLeaveGuard } from './nav-guard.js';
 
@@ -44,6 +44,8 @@ async function renderView(view, params = {}) {
     if (view === 'home') return await renderHome();
     if (view === 'connect') return (cleanup = await renderChecklistFlow(root, 'connect', { onExit: () => history.back() }));
     if (view === 'disconnect') return (cleanup = await renderChecklistFlow(root, 'disconnect', { onExit: () => history.back() }));
+    if (view === 'close-connect') return (cleanup = await renderChecklistFlow(root, 'close-connect', { onExit: () => history.back() }));
+    if (view === 'close-disconnect') return (cleanup = await renderChecklistFlow(root, 'close-disconnect', { onExit: () => history.back() }));
     if (view === 'joblog') return (cleanup = await renderJobLog(root, { onExit: () => history.back() }));
     if (view === 'history') return (cleanup = await renderHistory(root, { onExit: () => history.back(), initialRecordId: params.recordId }));
     if (view === 'changelog') return renderChangelog(root, { onExit: () => history.back() });
@@ -89,13 +91,23 @@ async function renderHome() {
       <div class="home-grid">
         <button class="tile tile-connect" id="connectBtn">
           <span class="tile-icon">🔗</span>
-          <span>Connect Trailer</span>
-          <span class="tile-sub">K · C · A · L · B</span>
+          <span>Standard Coupling</span>
+          <span class="tile-sub">${getMnemonic('connect')}</span>
         </button>
         <button class="tile tile-disconnect" id="disconnectBtn">
           <span class="tile-icon">⛓️‍💥</span>
-          <span>Drop Trailer</span>
-          <span class="tile-sub">B · L · A · C · K</span>
+          <span>Standard Uncoupling</span>
+          <span class="tile-sub">${getMnemonic('disconnect')}</span>
+        </button>
+        <button class="tile tile-close-connect" id="closeConnectBtn">
+          <span class="tile-icon">🔗</span>
+          <span>Close Coupling</span>
+          <span class="tile-sub">${getMnemonic('close-connect')}</span>
+        </button>
+        <button class="tile tile-close-disconnect" id="closeDisconnectBtn">
+          <span class="tile-icon">⛓️‍💥</span>
+          <span>Close Uncoupling</span>
+          <span class="tile-sub">${getMnemonic('close-disconnect')}</span>
         </button>
         <button class="tile" id="joblogBtn">
           <span class="tile-icon">📋</span>
@@ -125,6 +137,8 @@ async function renderHome() {
   `;
   root.querySelector('#connectBtn').onclick = () => go('connect');
   root.querySelector('#disconnectBtn').onclick = () => go('disconnect');
+  root.querySelector('#closeConnectBtn').onclick = () => go('close-connect');
+  root.querySelector('#closeDisconnectBtn').onclick = () => go('close-disconnect');
   root.querySelector('#joblogBtn').onclick = () => go('joblog');
   root.querySelector('#historyBtn').onclick = () => go('history');
   root.querySelector('#logoutBtn').onclick = () => backend.signOut();

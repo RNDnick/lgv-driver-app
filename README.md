@@ -6,11 +6,16 @@ data is synced to a shared Supabase backend so it isn't stuck on one device.
 
 ## Features
 
-- **Connect Trailer (KCALB)** — Kingpin, Clip, Airlines, Legs, Brake. Walks through
-  each step with an instruction and a camera capture, so you end up with photo
-  evidence for every check.
-- **Drop Trailer (BLACK)** — Brake, Legs, Airlines, Clip, Kingpin, in the correct
-  order for uncoupling.
+- **Four checklist types**, wording matched exactly to the company's physical
+  signage, each walking through its steps with an instruction and a camera
+  capture per step so you end up with photo evidence for every check:
+  - **Standard Trailer Coupling (KCALB)** — Kingpin, Clip, Airlines, Legs, Brake.
+  - **Standard Trailer Uncoupling (BLACK)** — Brake, Legs, Airlines, Clip, Kingpin.
+  - **Close Trailer Coupling (AKCLB)** — for tight yards: connect the air lines
+    after reversing only partially under the trailer, then reverse fully and
+    connect the kingpin, Clip, Legs, Brake.
+  - **Close Trailer Uncoupling (BLCKA)** — Brake, Legs, Clip, Kingpin, then pull
+    forward to access and disconnect the air lines.
 - **Job & Delivery Log** — log collection/delivery sites, trailer reg, mileage,
   notes, and capture a proof-of-delivery photo when a job completes.
 - **History** — browse past checklist runs and their photos. Tap any photo

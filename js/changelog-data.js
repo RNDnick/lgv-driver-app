@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.13.0',
+    date: '5 Sep 2026',
+    summary: "Standard Coupling/Uncoupling wording now matches the company's signage exactly. Added two new checklists for tighter yards: Close Coupling and Close Uncoupling, which connect/disconnect the air lines before reversing fully under the trailer instead of after.",
+  },
+  {
     version: '1.12.1',
     date: '2 Sep 2026',
     summary: 'Sync error messages on the Sync Status screen are now more specific about which step failed (uploading a photo vs. saving the record), to help track down stubborn sync failures.',

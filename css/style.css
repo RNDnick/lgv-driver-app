@@ -9,6 +9,8 @@
   --accent-2: #f59e0b;
   --danger: #ef4444;
   --success: #22c55e;
+  --success-2: #0d9488;
+  --accent-3: #ea580c;
 }
 
 * { box-sizing: border-box; }
@@ -101,6 +103,8 @@ button {
 .tile-sub { font-size: 0.75rem; color: var(--muted); font-weight: 400; }
 .tile-connect { border-color: var(--success); }
 .tile-disconnect { border-color: var(--accent-2); }
+.tile-close-connect { border-color: var(--success-2); }
+.tile-close-disconnect { border-color: var(--accent-3); }
 
 .field {
   display: flex;

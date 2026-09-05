@@ -102,7 +102,7 @@ grant select, insert, update, delete on public.jobs to authenticated;
 create table public.checklists (
   id uuid primary key,
   driver_id uuid not null references public.profiles(id) on delete cascade,
-  type text not null check (type in ('connect', 'disconnect')),
+  type text not null check (type in ('connect', 'disconnect', 'close-connect', 'close-disconnect')),
   trailer_reg text,
   job_id uuid references public.jobs(id) on delete set null,
   started_at bigint,
