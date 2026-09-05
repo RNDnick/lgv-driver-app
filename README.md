@@ -82,6 +82,12 @@ full resolution); falls back to a digital crop-and-scale everywhere else
 just with a little less sharpness at higher zoom on devices using the
 fallback.
 
+- **Feedback** — a link under the version number on the home screen lets a
+  driver send through a bug report or an idea any time. Sent the same
+  offline-safe way as everything else, and attributed to that driver (not
+  anonymous) so a manager can follow up. A manager account sees everyone's
+  submitted feedback on that same screen.
+
 ## Backend setup (Supabase)
 
 This app talks directly to a Supabase project (Postgres + Auth + Storage) from

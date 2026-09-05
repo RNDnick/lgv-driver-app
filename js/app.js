@@ -3,6 +3,7 @@ import { renderJobLog } from './joblog-view.js';
 import { renderHistory } from './history-view.js';
 import { renderChangelog } from './changelog-view.js';
 import { renderSyncStatus } from './sync-status-view.js';
+import { renderFeedback } from './feedback-view.js';
 import { renderAuth } from './auth-view.js';
 import * as backend from './backend.js';
 import * as sync from './sync.js';
@@ -50,6 +51,7 @@ async function renderView(view, params = {}) {
     if (view === 'history') return (cleanup = await renderHistory(root, { onExit: () => history.back(), initialRecordId: params.recordId }));
     if (view === 'changelog') return renderChangelog(root, { onExit: () => history.back() });
     if (view === 'sync-status') return renderSyncStatus(root, { onExit: () => history.back() });
+    if (view === 'feedback') return await renderFeedback(root, { onExit: () => history.back() });
   } catch (err) {
     root.innerHTML = `
       <div class="screen">
@@ -133,6 +135,7 @@ async function renderHome() {
         `).join('')}
       </div>` : ''}
       <p class="version-tag"><button id="whatsNewBtn" class="btn-link">v${APP_VERSION} · What's New</button></p>
+      <p class="version-tag"><button id="feedbackBtn" class="btn-link">Feedback — We'd love to hear your thoughts!</button></p>
     </div>
   `;
   root.querySelector('#connectBtn').onclick = () => go('connect');
@@ -143,6 +146,7 @@ async function renderHome() {
   root.querySelector('#historyBtn').onclick = () => go('history');
   root.querySelector('#logoutBtn').onclick = () => backend.signOut();
   root.querySelector('#whatsNewBtn').onclick = () => go('changelog');
+  root.querySelector('#feedbackBtn').onclick = () => go('feedback');
   root.querySelector('#pendingBadgeBtn')?.addEventListener('click', () => go('sync-status'));
   root.querySelectorAll('.list-item').forEach(el => {
     el.onclick = () => go('history', { recordId: el.dataset.id });

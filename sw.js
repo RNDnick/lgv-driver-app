@@ -1,7 +1,7 @@
 // Keep in sync with APP_VERSION in js/version.js - a classic (non-module)
 // service worker can't import it directly, so this is bumped by hand on every
 // release alongside that file.
-const CACHE = 'lgv-driver-v1.14.0';
+const CACHE = 'lgv-driver-v1.15.0';
 const ASSETS = [
   './',
   './index.html',
@@ -25,6 +25,7 @@ const ASSETS = [
   './js/changelog-view.js',
   './js/lightbox.js',
   './js/sync-status-view.js',
+  './js/feedback-view.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',

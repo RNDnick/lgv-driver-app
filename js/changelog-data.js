@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.15.0',
+    date: '5 Sep 2026',
+    summary: "Added a Feedback link under the version number on the home screen - tap it any time to send through a bug report or an idea, offline-safe like everything else. It's sent with your name attached so we can follow up if needed.",
+  },
+  {
     version: '1.14.0',
     date: '5 Sep 2026',
     summary: 'Every photo now gets a timestamp (YY-MM-DD-HH-MM-SS, your phone\'s local time) burned into the bottom-right corner - checklist steps and the delivery photo alike - so there\'s a permanent record of exactly when each check was done.',

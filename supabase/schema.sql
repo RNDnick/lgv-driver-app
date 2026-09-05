@@ -125,6 +125,26 @@ create policy "checklists_delete" on public.checklists
 
 grant select, insert, update, delete on public.checklists to authenticated;
 
+-- ── feedback ────────────────────────────────────────────────────────────
+create table public.feedback (
+  id uuid primary key,
+  driver_id uuid not null references public.profiles(id) on delete cascade,
+  message text not null,
+  created_at bigint not null
+);
+
+create index feedback_driver_id_idx on public.feedback (driver_id);
+alter table public.feedback enable row level security;
+
+-- Attributed, not anonymous, so a manager can follow up on a message - but
+-- immutable once sent (no update/delete policy), same as checklist photos.
+create policy "feedback_select" on public.feedback
+  for select using (driver_id = auth.uid() or public.is_manager(auth.uid()));
+create policy "feedback_insert" on public.feedback
+  for insert with check (driver_id = auth.uid());
+
+grant select, insert on public.feedback to authenticated;
+
 -- ── storage: checklist-photos bucket ───────────────────────────────────
 insert into storage.buckets (id, name, public)
 values ('checklist-photos', 'checklist-photos', false)

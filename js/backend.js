@@ -186,6 +186,39 @@ export async function syncChecklist(record, photos = {}) {
   if (error) throw new Error(`Saving checklist record failed: ${error.message}`);
 }
 
+export async function syncFeedback(feedback) {
+  const session = await getSession();
+  if (!session) throw new Error('Not signed in');
+  const { error } = await supabase.from('feedback').upsert({
+    id: feedback.id,
+    driver_id: session.user.id,
+    message: feedback.message,
+    created_at: feedback.createdAt,
+  });
+  if (error) throw new Error(`Sending feedback failed: ${error.message}`);
+}
+
+// Manager-only (see js/feedback-view.js) - RLS already restricts a driver's
+// own select() to their own rows, so this only ever returns everything when
+// called by a manager account in the first place.
+export async function getAllFeedback() {
+  const { data, error } = await supabase.from('feedback').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  const driverIds = [...new Set(data.map(row => row.driver_id))];
+  let namesById = {};
+  if (driverIds.length) {
+    const { data: profiles, error: profileErr } = await supabase.from('profiles').select('id, full_name').in('id', driverIds);
+    if (profileErr) throw profileErr;
+    namesById = Object.fromEntries(profiles.map(p => [p.id, p.full_name]));
+  }
+  return data.map(row => ({
+    id: row.id,
+    driverName: namesById[row.driver_id] || 'Unknown driver',
+    message: row.message,
+    createdAt: row.created_at,
+  }));
+}
+
 export async function getPhotoUrl(path, expiresIn = 3600) {
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, expiresIn);
   if (error) throw error;

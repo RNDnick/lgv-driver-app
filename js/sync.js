@@ -52,6 +52,8 @@ export async function flushOutbox() {
           await backend.syncJob(entry.payload, entry.photos);
         } else if (entry.kind === 'checklist') {
           await backend.syncChecklist(entry.payload, entry.photos);
+        } else if (entry.kind === 'feedback') {
+          await backend.syncFeedback(entry.payload);
         }
         await dbDelete(STORE, entry.id);
         notify();
