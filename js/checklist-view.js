@@ -11,6 +11,10 @@ function fmtDate(ts) {
   return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
+// An uncoupling flow's trailer reg is almost always whatever the driver last
+// coupled using that same method - saves re-typing it a few minutes later.
+const COUPLING_COUNTERPART = { disconnect: 'connect', 'close-disconnect': 'close-connect' };
+
 export async function renderChecklistFlow(root, type, { onExit } = {}) {
   const steps = getSteps(type);
   let trailerReg = '';
@@ -278,6 +282,11 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
   if (existingDraft && existingDraft.steps.length > 0) {
     renderResumePrompt(existingDraft);
   } else {
+    const counterpartType = COUPLING_COUNTERPART[type];
+    if (counterpartType) {
+      const lastCoupling = (await sync.getMergedChecklists()).find(c => c.type === counterpartType);
+      if (lastCoupling?.trailerReg) trailerReg = lastCoupling.trailerReg;
+    }
     renderSetup();
   }
 

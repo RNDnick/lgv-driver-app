@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.13.1',
+    date: '5 Sep 2026',
+    summary: 'Standard Uncoupling and Close Uncoupling now pre-fill the trailer registration from your last matching coupling, so you don’t have to type it again - still editable if it’s wrong.',
+  },
+  {
     version: '1.13.0',
     date: '5 Sep 2026',
     summary: "Standard Coupling/Uncoupling wording now matches the company's signage exactly. Added two new checklists for tighter yards: Close Coupling and Close Uncoupling, which connect/disconnect the air lines before reversing fully under the trailer instead of after.",
