@@ -12,7 +12,7 @@ import { getLabel, getMnemonic } from './checklists-data.js';
 import { APP_VERSION } from './version.js';
 import { checkLeaveGuard, clearLeaveGuard } from './nav-guard.js';
 
-const RECENT_CHECKLISTS_COUNT = 5;
+const RECENT_CHECKLISTS_COUNT = 3;
 
 const root = document.getElementById('app-root');
 let cleanup = null;
