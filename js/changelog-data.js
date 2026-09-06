@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.17.0',
+    date: '6 Sep 2026',
+    summary: 'The Manager Dashboard now groups Checklists, Jobs and Feedback by driver name (alphabetical), and has a search box to jump straight to one driver as the team grows.',
+  },
+  {
     version: '1.16.1',
     date: '6 Sep 2026',
     summary: "Trimmed the home screen's Recent Checklists list from 5 down to 3, to keep things tidier - your full history is still one tap away.",
