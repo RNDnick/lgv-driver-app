@@ -136,14 +136,24 @@ create table public.feedback (
 create index feedback_driver_id_idx on public.feedback (driver_id);
 alter table public.feedback enable row level security;
 
--- Attributed, not anonymous, so a manager can follow up on a message - but
--- immutable once sent (no update/delete policy), same as checklist photos.
+-- Attributed, not anonymous, so a manager can follow up on a message.
 create policy "feedback_select" on public.feedback
   for select using (driver_id = auth.uid() or public.is_manager(auth.uid()));
 create policy "feedback_insert" on public.feedback
   for insert with check (driver_id = auth.uid());
 
-grant select, insert on public.feedback to authenticated;
+-- The client sends feedback via upsert() for retry-safety (same reasoning as
+-- checklist_photos_update above: a retried send after a dropped response
+-- reuses the same client-generated id, which becomes an UPDATE on conflict)
+-- - that needs actual UPDATE privilege/policy, not just INSERT, or every
+-- retry past a successful-but-unconfirmed first send fails with a permission
+-- error indistinguishable from an auth problem. Still effectively immutable
+-- in practice: nothing in the app lets a driver edit a message once sent.
+create policy "feedback_update" on public.feedback
+  for update using (driver_id = auth.uid())
+  with check (driver_id = auth.uid());
+
+grant select, insert, update on public.feedback to authenticated;
 
 -- ── storage: checklist-photos bucket ───────────────────────────────────
 insert into storage.buckets (id, name, public)
