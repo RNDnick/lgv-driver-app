@@ -7,7 +7,7 @@ import { createSubRouter } from './subrouter.js';
 import { openLightbox, handleLightboxPop } from './lightbox.js';
 
 const FORM_DRAFT_ID = 'draft-job-form';
-const FORM_FIELDS = ['customer', 'collectionSite', 'deliverySite', 'trailerReg', 'mileageStart', 'notes'];
+const FORM_FIELDS = ['customer', 'collectionSite', 'deliverySite', 'trailerReg', 'mileageStart', 'mileageEnd', 'notes'];
 
 function fmtDate(ts) {
   return new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -115,6 +115,7 @@ export async function renderJobLog(root, { onExit } = {}) {
         <label class="field"><span>Trailer registration</span><input id="trailerReg" type="text" value="${draft?.trailerReg || ''}" /></label>
         <p id="formError" class="error" style="display:none">Trailer registration is required.</p>
         <label class="field"><span>Mileage at start</span><input id="mileageStart" type="number" inputmode="numeric" value="${draft?.mileageStart || ''}" /></label>
+        <label class="field"><span>Mileage at finish</span><input id="mileageEnd" type="number" inputmode="numeric" value="${draft?.mileageEnd || ''}" /></label>
         <label class="field"><span>Notes</span><textarea id="notes" rows="3">${draft?.notes || ''}</textarea></label>
         <button id="saveBtn" class="btn-primary btn-large">Save Job</button>
         <button id="cancelBtn" class="btn-secondary">Cancel</button>
@@ -136,7 +137,7 @@ export async function renderJobLog(root, { onExit } = {}) {
         deliverySite: root.querySelector('#deliverySite').value.trim(),
         trailerReg,
         mileageStart: root.querySelector('#mileageStart').value || null,
-        mileageEnd: null,
+        mileageEnd: root.querySelector('#mileageEnd').value || null,
         notes: root.querySelector('#notes').value.trim(),
         podPhotoPath: null,
         completedAt: null,
@@ -207,7 +208,7 @@ export async function renderJobLog(root, { onExit } = {}) {
     root.innerHTML = `
       <div class="screen">
         <h2>Proof of Delivery</h2>
-        <label class="field"><span>Mileage at end</span><input id="mileageEnd" type="number" inputmode="numeric" /></label>
+        <label class="field"><span>Mileage at end</span><input id="mileageEnd" type="number" inputmode="numeric" value="${job.mileageEnd || ''}" /></label>
         <div class="camera-wrap">
           <video id="cam" playsinline autoplay muted class="camera-preview"></video>
           <button id="zoomBtn" class="zoom-btn" title="Zoom">1x</button>

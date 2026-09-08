@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.18.0',
+    date: '8 Sep 2026',
+    summary: 'Added a "Mileage at finish" field to the New Job form, for when you already know it up front. It carries through to the Proof of Delivery screen (still editable there) instead of needing to be re-entered.',
+  },
+  {
     version: '1.17.6',
     date: '8 Sep 2026',
     summary: 'The "Photo Evidence" tile on the Sign In screen is now tappable too, showing real (timestamped) example photos from a completed checklist.',
