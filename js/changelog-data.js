@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.17.4',
+    date: '8 Sep 2026',
+    summary: 'The Sign In screen now shows the app logo next to the SafeCouple title, centered at the top.',
+  },
+  {
     version: '1.17.3',
     date: '8 Sep 2026',
     summary: 'Tidied the bottom of the Sign In screen - version number, "Built by RND Tech", and the copyright notice now stack centered together.',

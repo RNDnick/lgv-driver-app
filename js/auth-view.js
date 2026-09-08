@@ -22,9 +22,9 @@ export function renderAuth(root, { onAuthed } = {}) {
   function renderSignIn() {
     root.innerHTML = `
       <div class="screen">
-        <div class="home-header">
-          <h1>SafeCouple</h1>
-          <button id="signInLinkBtn" class="btn-link">${showSignInForm ? 'Hide' : 'Sign In'}</button>
+        <div class="landing-header">
+          <h1 class="landing-title"><img src="icons/icon-192.png" class="landing-logo" alt="" />SafeCouple</h1>
+          <button id="signInLinkBtn" class="btn-link landing-signin-link">${showSignInForm ? 'Hide' : 'Sign In'}</button>
         </div>
         ${showSignInForm ? signInFieldsHtml() : ''}
 

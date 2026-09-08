@@ -71,6 +71,11 @@ h3 { font-size: 1rem; color: var(--muted); margin-top: 24px; }
 .muted.small { font-size: 0.8rem; }
 .version-tag { text-align: center; margin-top: 8px; }
 .landing-footer-tag { line-height: 1.5; margin-bottom: -34px; }
+
+.landing-header { position: relative; }
+.landing-title { display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center; }
+.landing-logo { width: 1.3em; height: 1.3em; border-radius: 20%; }
+.landing-signin-link { position: absolute; top: 4px; right: 0; }
 .instruction { font-size: 1.05rem; line-height: 1.5; }
 .error { color: var(--danger); }
 
