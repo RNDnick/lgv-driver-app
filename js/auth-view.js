@@ -62,11 +62,11 @@ export function renderAuth(root, { onAuthed } = {}) {
             <span>Works Offline</span>
             <span class="tile-sub">Saves instantly, syncs later</span>
           </div>
-          <div class="tile">
+          <button class="tile" id="exampleJobLogBtn">
             <span class="tile-icon">📋</span>
             <span>Job &amp; Delivery Log</span>
             <span class="tile-sub">Mileage &amp; proof-of-delivery photos</span>
-          </div>
+          </button>
           <div class="tile">
             <span class="tile-icon">📊</span>
             <span>Manager Oversight</span>
@@ -103,6 +103,10 @@ export function renderAuth(root, { onAuthed } = {}) {
     root.querySelector('#examplePhotosBtn').onclick = () => {
       history.pushState({ view: 'example-photos' }, '');
       renderExamplePhotos();
+    };
+    root.querySelector('#exampleJobLogBtn').onclick = () => {
+      history.pushState({ view: 'example-joblog' }, '');
+      renderExampleJobLog();
     };
     if (showSignInForm) {
       root.querySelector('#submitBtn').onclick = async () => {
@@ -179,6 +183,74 @@ export function renderAuth(root, { onAuthed } = {}) {
       </div>
     `;
     root.querySelector('#backBtn').onclick = () => history.back();
+  }
+
+  // Made-up entries, not real jobs - unlike the checklist/photo examples,
+  // real job records carry actual customer names and delivery sites, which
+  // is business information, not something to publish just to show the UI.
+  const EXAMPLE_JOBS = [
+    {
+      customer: 'Example Manufacturing Ltd', status: 'open',
+      collectionSite: 'Leeds Depot', deliverySite: 'Sheffield DC',
+      date: 'Today, 09:15', trailerReg: 'AB12 CDE',
+      mileageStart: 48213, mileageEnd: null,
+      notes: 'Call ahead on arrival, use the side gate.',
+    },
+    {
+      customer: 'Sample Retail Group', status: 'complete',
+      collectionSite: 'Manchester Hub', deliverySite: 'Preston Store',
+      date: 'Yesterday, 14:20', trailerReg: 'CD34 EFG',
+      mileageStart: 52890, mileageEnd: 53040,
+      notes: 'Left with warehouse manager, signed for.',
+    },
+  ];
+
+  function renderExampleJobLog() {
+    root.innerHTML = `
+      <div class="screen">
+        <h2>Example: Job &amp; Delivery Log</h2>
+        <p class="muted small">Made-up jobs, showing the format - tap one to see the full detail.</p>
+        <div class="list">
+          ${EXAMPLE_JOBS.map((j, i) => `
+            <div class="list-item" data-index="${i}">
+              <div class="list-item-main">
+                <strong>${j.customer}</strong>
+                <span class="badge ${j.status}">${j.status}</span>
+                <div class="muted">${j.collectionSite} → ${j.deliverySite}</div>
+                <div class="muted small">${j.date} · ${j.trailerReg}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <button id="backBtn" class="btn-secondary">Back</button>
+      </div>
+    `;
+    root.querySelectorAll('.list-item').forEach(el => {
+      // Not pushed onto history like the outer tile navigation - this whole
+      // example page is already a single history entry (see
+      // #exampleJobLogBtn's handler), and app.js's global popstate listener
+      // doesn't know this pre-login sub-navigation exists, so a second
+      // pushed level here would get collapsed straight back to the landing
+      // page instead of to this list. Simple in-place swap avoids that.
+      el.onclick = () => renderExampleJobDetail(EXAMPLE_JOBS[Number(el.dataset.index)]);
+    });
+    root.querySelector('#backBtn').onclick = () => history.back();
+  }
+
+  function renderExampleJobDetail(job) {
+    root.innerHTML = `
+      <div class="screen">
+        <h2>${job.customer}</h2>
+        <span class="badge ${job.status}">${job.status}</span>
+        <p class="muted">${job.collectionSite} → ${job.deliverySite}</p>
+        <p class="muted small">${job.date} · ${job.trailerReg}</p>
+        <p>Mileage start: ${job.mileageStart}${job.mileageEnd ? ' · end: ' + job.mileageEnd : ''}</p>
+        <p>${job.notes}</p>
+        ${job.status === 'complete' ? '<p class="muted small">A real delivery also has a timestamped proof-of-delivery photo here.</p>' : ''}
+        <button id="backBtn" class="btn-secondary">Back</button>
+      </div>
+    `;
+    root.querySelector('#backBtn').onclick = () => renderExampleJobLog();
   }
 
   function renderSignUp() {

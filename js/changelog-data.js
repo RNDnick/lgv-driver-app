@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.18.1',
+    date: '8 Sep 2026',
+    summary: 'The "Job & Delivery Log" tile on the Sign In screen is now tappable too, showing a made-up example job list you can tap into for the full detail.',
+  },
+  {
     version: '1.18.0',
     date: '8 Sep 2026',
     summary: 'Added a "Mileage at finish" field to the New Job form, for when you already know it up front. It carries through to the Proof of Delivery screen (still editable there) instead of needing to be re-entered.',
