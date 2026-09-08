@@ -1,5 +1,6 @@
 import * as backend from './backend.js';
 import { APP_VERSION } from './version.js';
+import { getSteps, getLabel } from './checklists-data.js';
 
 export function renderAuth(root, { onAuthed } = {}) {
   let mode = 'signin';
@@ -45,11 +46,11 @@ export function renderAuth(root, { onAuthed } = {}) {
 
         <h3>What's included</h3>
         <div class="home-grid">
-          <div class="tile">
+          <button class="tile" id="exampleChecklistBtn">
             <span class="tile-icon">🔗</span>
             <span>Guided Checklists</span>
             <span class="tile-sub">Matched to your own safety process</span>
-          </div>
+          </button>
           <div class="tile">
             <span class="tile-icon">📷</span>
             <span>Photo Evidence</span>
@@ -89,6 +90,15 @@ export function renderAuth(root, { onAuthed } = {}) {
       showSignInForm = false;
       renderSignUp();
     };
+    root.querySelector('#exampleChecklistBtn').onclick = () => {
+      // Pushed so the hardware/browser back button returns here rather than
+      // exiting the page - app.js's global popstate handler doesn't know
+      // about this pre-login state, but since it re-checks the session and
+      // finds none for ANY unrecognised view, it falls through to showAuth(),
+      // which is exactly "back to the landing page" anyway.
+      history.pushState({ view: 'example-checklist' }, '');
+      renderExampleChecklist();
+    };
     if (showSignInForm) {
       root.querySelector('#submitBtn').onclick = async () => {
         const email = root.querySelector('#email').value.trim();
@@ -104,6 +114,32 @@ export function renderAuth(root, { onAuthed } = {}) {
         }
       };
     }
+  }
+
+  // A no-login preview of the real checklist flow's content (steps and
+  // instructions only - no camera, no saving) so a visitor can see what
+  // "guided checklist" actually means before creating an account.
+  function renderExampleChecklist() {
+    const steps = getSteps('connect');
+    root.innerHTML = `
+      <div class="screen">
+        <h2>Example: ${getLabel('connect')}</h2>
+        <p class="muted small">A preview of what a driver sees for each step.</p>
+        <div class="list">
+          ${steps.map((s, i) => `
+            <div class="list-item">
+              <div class="list-item-main">
+                <strong>Step ${i + 1} of ${steps.length}: ${s.key} — ${s.title}</strong>
+                <p class="instruction">${s.instruction}</p>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <p class="muted small">Each step also captures a timestamped photo as evidence, synced automatically once you're signed in.</p>
+        <button id="backBtn" class="btn-secondary">Back</button>
+      </div>
+    `;
+    root.querySelector('#backBtn').onclick = () => history.back();
   }
 
   function renderSignUp() {

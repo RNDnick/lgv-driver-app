@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.17.5',
+    date: '8 Sep 2026',
+    summary: 'The "Guided Checklists" tile on the Sign In screen is now tappable, showing an example checklist with all 5 real steps - no account needed to look.',
+  },
+  {
     version: '1.17.4',
     date: '8 Sep 2026',
     summary: 'The Sign In screen now shows the app logo next to the SafeCouple title, centered at the top.',
