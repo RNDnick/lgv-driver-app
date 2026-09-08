@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.17.1',
+    date: '8 Sep 2026',
+    summary: 'Added a short explainer above the Sign In screen - what SafeCouple does and how it works - so it makes sense to anyone landing on it before signing in.',
+  },
+  {
     version: '1.17.0',
     date: '6 Sep 2026',
     summary: 'The Manager Dashboard now groups Checklists, Jobs and Feedback by driver name (alphabetical), and has a search box to jump straight to one driver as the team grows.',

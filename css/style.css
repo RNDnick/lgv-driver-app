@@ -47,6 +47,26 @@ h3 { font-size: 1rem; color: var(--muted); margin-top: 24px; }
 
 .driver-group-heading { font-weight: 700; margin: 14px 0 4px; font-size: 0.95rem; }
 
+.tagline { font-size: 1.05rem; margin: -8px 0 0; }
+
+.landing-steps { display: flex; flex-direction: column; gap: 10px; }
+.landing-step { display: flex; gap: 10px; align-items: flex-start; }
+.landing-step-num {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.landing-divider { border: none; border-top: 1px solid var(--border); margin: 8px 0 0; }
+
 .screen { display: flex; flex-direction: column; gap: 12px; }
 
 .muted { color: var(--muted); }
