@@ -3,102 +3,140 @@ import { APP_VERSION } from './version.js';
 
 export function renderAuth(root, { onAuthed } = {}) {
   let mode = 'signin';
+  let showSignInForm = false;
 
-  // Shown only ahead of Sign In, not Sign Up/Check Email - a visitor landing
-  // here cold (including Google's crawler) sees what this actually is before
-  // hitting a login wall; someone already mid-signup doesn't need the pitch
-  // repeated.
-  function landingHtml() {
+  function signInFieldsHtml() {
     return `
-      <p class="tagline">Photo-verified trailer coupling &amp; uncoupling checks for LGV drivers.</p>
-      <p class="instruction">Paper checklists get lost, get skipped, or get filled in after the fact.
-        SafeCouple gives every coupling and uncoupling a timestamped photo record instead —
-        automatically, on the driver's own phone, with no paperwork.</p>
-
-      <h3>How it works</h3>
-      <div class="landing-steps">
-        <div class="landing-step"><span class="landing-step-num">1</span><span>Pick Standard or Close Coupling/Uncoupling</span></div>
-        <div class="landing-step"><span class="landing-step-num">2</span><span>Follow the steps in order — Kingpin, Clip, Airlines, Legs, Brake</span></div>
-        <div class="landing-step"><span class="landing-step-num">3</span><span>Snap a photo at each step — timestamped automatically</span></div>
-        <div class="landing-step"><span class="landing-step-num">4</span><span>Done — saved instantly, even offline, and synced once you're back in signal</span></div>
-      </div>
-
-      <h3>What's included</h3>
-      <div class="home-grid">
-        <div class="tile">
-          <span class="tile-icon">🔗</span>
-          <span>Guided Checklists</span>
-          <span class="tile-sub">Matched to your own safety process</span>
-        </div>
-        <div class="tile">
-          <span class="tile-icon">📷</span>
-          <span>Photo Evidence</span>
-          <span class="tile-sub">Timestamped proof at every step</span>
-        </div>
-        <div class="tile">
-          <span class="tile-icon">📶</span>
-          <span>Works Offline</span>
-          <span class="tile-sub">Saves instantly, syncs later</span>
-        </div>
-        <div class="tile">
-          <span class="tile-icon">📋</span>
-          <span>Job &amp; Delivery Log</span>
-          <span class="tile-sub">Mileage &amp; proof-of-delivery photos</span>
-        </div>
-        <div class="tile">
-          <span class="tile-icon">📊</span>
-          <span>Manager Oversight</span>
-          <span class="tile-sub">Every driver's checks, one place</span>
-        </div>
-      </div>
-
-      <h3>Who it's for</h3>
-      <p class="instruction">Used by RND Tech's own drivers to record every trailer coupling and
-        uncoupling with photo evidence — replacing paper checklists with a reliable,
-        timestamped digital record.</p>
-
-      <p class="muted small">Built by RND Tech.</p>
-      <hr class="landing-divider" />
+      <label class="field"><span>Email</span><input id="email" type="email" autocomplete="email" /></label>
+      <label class="field"><span>Password</span><input id="password" type="password" autocomplete="current-password" /></label>
+      <p id="authError" class="error" style="display:none"></p>
+      <button id="submitBtn" class="btn-primary btn-large">Sign In</button>
     `;
   }
 
-  function render() {
+  // A returning driver wants the form fast, without scrolling past the pitch
+  // - a small link at the top expands it in place. A first-time visitor
+  // (including Google's crawler) sees the pitch first; Sign Up sits below
+  // "How it works" since that's the point someone new has enough context to
+  // decide to create an account.
+  function renderSignIn() {
+    root.innerHTML = `
+      <div class="screen">
+        <div class="home-header">
+          <h1>SafeCouple</h1>
+          <button id="signInLinkBtn" class="btn-link">${showSignInForm ? 'Hide' : 'Sign In'}</button>
+        </div>
+        ${showSignInForm ? signInFieldsHtml() : ''}
+
+        <p class="tagline">Photo-verified trailer coupling &amp; uncoupling checks for LGV drivers.</p>
+        <p class="instruction">Paper checklists get lost, get skipped, or get filled in after the fact.
+          SafeCouple gives every coupling and uncoupling a timestamped photo record instead —
+          automatically, on the driver's own phone, with no paperwork.</p>
+
+        <h3>How it works</h3>
+        <div class="landing-steps">
+          <div class="landing-step"><span class="landing-step-num">1</span><span>Pick Standard or Close Coupling/Uncoupling</span></div>
+          <div class="landing-step"><span class="landing-step-num">2</span><span>Follow the steps in order — Kingpin, Clip, Airlines, Legs, Brake</span></div>
+          <div class="landing-step"><span class="landing-step-num">3</span><span>Snap a photo at each step — timestamped automatically</span></div>
+          <div class="landing-step"><span class="landing-step-num">4</span><span>Done — saved instantly, even offline, and synced once you're back in signal</span></div>
+        </div>
+
+        <button id="toggleBtn" class="btn-secondary">Need an account? Sign Up</button>
+
+        <h3>What's included</h3>
+        <div class="home-grid">
+          <div class="tile">
+            <span class="tile-icon">🔗</span>
+            <span>Guided Checklists</span>
+            <span class="tile-sub">Matched to your own safety process</span>
+          </div>
+          <div class="tile">
+            <span class="tile-icon">📷</span>
+            <span>Photo Evidence</span>
+            <span class="tile-sub">Timestamped proof at every step</span>
+          </div>
+          <div class="tile">
+            <span class="tile-icon">📶</span>
+            <span>Works Offline</span>
+            <span class="tile-sub">Saves instantly, syncs later</span>
+          </div>
+          <div class="tile">
+            <span class="tile-icon">📋</span>
+            <span>Job &amp; Delivery Log</span>
+            <span class="tile-sub">Mileage &amp; proof-of-delivery photos</span>
+          </div>
+          <div class="tile">
+            <span class="tile-icon">📊</span>
+            <span>Manager Oversight</span>
+            <span class="tile-sub">Every driver's checks, one place</span>
+          </div>
+        </div>
+
+        <h3>Who it's for</h3>
+        <p class="instruction">Used by RND Tech's own drivers to record every trailer coupling and
+          uncoupling with photo evidence — replacing paper checklists with a reliable,
+          timestamped digital record.</p>
+
+        <p class="muted small">Built by RND Tech.</p>
+        <p class="muted small version-tag">v${APP_VERSION}</p>
+      </div>
+    `;
+    root.querySelector('#signInLinkBtn').onclick = () => {
+      showSignInForm = !showSignInForm;
+      renderSignIn();
+    };
+    root.querySelector('#toggleBtn').onclick = () => {
+      mode = 'signup';
+      showSignInForm = false;
+      renderSignUp();
+    };
+    if (showSignInForm) {
+      root.querySelector('#submitBtn').onclick = async () => {
+        const email = root.querySelector('#email').value.trim();
+        const password = root.querySelector('#password').value;
+        const errEl = root.querySelector('#authError');
+        errEl.style.display = 'none';
+        try {
+          await backend.signIn(email, password);
+          onAuthed && onAuthed();
+        } catch (err) {
+          errEl.textContent = err.message;
+          errEl.style.display = 'block';
+        }
+      };
+    }
+  }
+
+  function renderSignUp() {
     root.innerHTML = `
       <div class="screen">
         <h1>SafeCouple</h1>
-        ${mode === 'signin' ? landingHtml() : ''}
-        <h2>${mode === 'signin' ? 'Sign In' : 'Create Account'}</h2>
-        ${mode === 'signup' ? `
-        <label class="field"><span>Full name</span><input id="fullName" type="text" autocomplete="name" /></label>` : ''}
+        <h2>Create Account</h2>
+        <label class="field"><span>Full name</span><input id="fullName" type="text" autocomplete="name" /></label>
         <label class="field"><span>Email</span><input id="email" type="email" autocomplete="email" /></label>
-        <label class="field"><span>Password</span><input id="password" type="password" autocomplete="${mode === 'signin' ? 'current-password' : 'new-password'}" /></label>
+        <label class="field"><span>Password</span><input id="password" type="password" autocomplete="new-password" /></label>
         <p id="authError" class="error" style="display:none"></p>
-        <button id="submitBtn" class="btn-primary btn-large">${mode === 'signin' ? 'Sign In' : 'Sign Up'}</button>
-        <button id="toggleBtn" class="btn-secondary">${mode === 'signin' ? 'Need an account? Sign Up' : 'Have an account? Sign In'}</button>
+        <button id="submitBtn" class="btn-primary btn-large">Sign Up</button>
+        <button id="toggleBtn" class="btn-secondary">Have an account? Sign In</button>
         <p class="muted small version-tag">v${APP_VERSION}</p>
       </div>
     `;
     root.querySelector('#toggleBtn').onclick = () => {
-      mode = mode === 'signin' ? 'signup' : 'signin';
-      render();
+      mode = 'signin';
+      renderSignIn();
     };
     root.querySelector('#submitBtn').onclick = async () => {
       const email = root.querySelector('#email').value.trim();
       const password = root.querySelector('#password').value;
+      const fullName = root.querySelector('#fullName').value.trim();
       const errEl = root.querySelector('#authError');
       errEl.style.display = 'none';
       try {
-        if (mode === 'signin') {
-          await backend.signIn(email, password);
+        const { session } = await backend.signUp(email, password, fullName);
+        if (session) {
           onAuthed && onAuthed();
         } else {
-          const fullName = root.querySelector('#fullName').value.trim();
-          const { session } = await backend.signUp(email, password, fullName);
-          if (session) {
-            onAuthed && onAuthed();
-          } else {
-            renderCheckEmail(email);
-          }
+          renderCheckEmail(email);
         }
       } catch (err) {
         errEl.textContent = err.message;
@@ -118,9 +156,9 @@ export function renderAuth(root, { onAuthed } = {}) {
     `;
     root.querySelector('#backBtn').onclick = () => {
       mode = 'signin';
-      render();
+      renderSignIn();
     };
   }
 
-  render();
+  renderSignIn();
 }

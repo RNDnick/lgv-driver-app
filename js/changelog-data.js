@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.17.2',
+    date: '8 Sep 2026',
+    summary: 'Tidied up the Sign In screen: it\'s now a small "Sign In" link at the top so returning drivers can get straight to it, and "Need an account? Sign Up" sits below "How it works" instead of the bottom.',
+  },
+  {
     version: '1.17.1',
     date: '8 Sep 2026',
     summary: 'Added a short explainer above the Sign In screen - what SafeCouple does and how it works - so it makes sense to anyone landing on it before signing in.',
