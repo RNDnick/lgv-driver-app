@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.17.3',
+    date: '8 Sep 2026',
+    summary: 'Tidied the bottom of the Sign In screen - version number, "Built by RND Tech", and the copyright notice now stack centered together.',
+  },
+  {
     version: '1.17.2',
     date: '8 Sep 2026',
     summary: 'Tidied up the Sign In screen: it\'s now a small "Sign In" link at the top so returning drivers can get straight to it, and "Need an account? Sign Up" sits below "How it works" instead of the bottom.',
