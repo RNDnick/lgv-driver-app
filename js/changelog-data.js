@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.17.6',
+    date: '8 Sep 2026',
+    summary: 'The "Photo Evidence" tile on the Sign In screen is now tappable too, showing real (timestamped) example photos from a completed checklist.',
+  },
+  {
     version: '1.17.5',
     date: '8 Sep 2026',
     summary: 'The "Guided Checklists" tile on the Sign In screen is now tappable, showing an example checklist with all 5 real steps - no account needed to look.',

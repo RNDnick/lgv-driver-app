@@ -52,11 +52,11 @@ export function renderAuth(root, { onAuthed } = {}) {
             <span>Guided Checklists</span>
             <span class="tile-sub">Matched to your own safety process</span>
           </button>
-          <div class="tile">
+          <button class="tile" id="examplePhotosBtn">
             <span class="tile-icon">📷</span>
             <span>Photo Evidence</span>
             <span class="tile-sub">Timestamped proof at every step</span>
-          </div>
+          </button>
           <div class="tile">
             <span class="tile-icon">📶</span>
             <span>Works Offline</span>
@@ -100,6 +100,10 @@ export function renderAuth(root, { onAuthed } = {}) {
       history.pushState({ view: 'example-checklist' }, '');
       renderExampleChecklist();
     };
+    root.querySelector('#examplePhotosBtn').onclick = () => {
+      history.pushState({ view: 'example-photos' }, '');
+      renderExamplePhotos();
+    };
     if (showSignInForm) {
       root.querySelector('#submitBtn').onclick = async () => {
         const email = root.querySelector('#email').value.trim();
@@ -137,6 +141,40 @@ export function renderAuth(root, { onAuthed } = {}) {
           `).join('')}
         </div>
         <p class="muted small">Each step also captures a timestamped photo as evidence, synced automatically once you're signed in.</p>
+        <button id="backBtn" class="btn-secondary">Back</button>
+      </div>
+    `;
+    root.querySelector('#backBtn').onclick = () => history.back();
+  }
+
+  // Real photos from a real completed checklist (with the actual times those
+  // steps were done composited on, matching what the timestamp feature now
+  // does automatically) - shown here as static assets rather than fetched
+  // live, since the storage bucket these actually live in is private and
+  // RLS-protected, and a visitor here has no session to read it with anyway.
+  const EXAMPLE_PHOTOS = [
+    { key: 'K', title: 'Kingpin', file: 'kingpin.jpg' },
+    { key: 'C', title: 'Dog Clip', file: 'dog-clip.jpg' },
+    { key: 'A', title: 'Airlines', file: 'airlines.jpg' },
+    { key: 'L', title: 'Legs', file: 'legs.jpg' },
+    { key: 'B', title: 'Brake', file: 'brake.jpg' },
+  ];
+
+  function renderExamplePhotos() {
+    root.innerHTML = `
+      <div class="screen">
+        <h2>Example: Photo Evidence</h2>
+        <p class="muted small">Real photos from a completed Standard Trailer Coupling, each with the time that step was actually done.</p>
+        <div class="list">
+          ${EXAMPLE_PHOTOS.map(p => `
+            <div class="list-item">
+              <div class="list-item-main">
+                <strong>${p.key} — ${p.title}</strong>
+                <img class="photo-preview" src="assets/examples/${p.file}" alt="Example ${p.title} photo" />
+              </div>
+            </div>
+          `).join('')}
+        </div>
         <button id="backBtn" class="btn-secondary">Back</button>
       </div>
     `;

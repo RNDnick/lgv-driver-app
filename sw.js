@@ -1,7 +1,7 @@
 // Keep in sync with APP_VERSION in js/version.js - a classic (non-module)
 // service worker can't import it directly, so this is bumped by hand on every
 // release alongside that file.
-const CACHE = 'lgv-driver-v1.17.5';
+const CACHE = 'lgv-driver-v1.17.6';
 const ASSETS = [
   './',
   './index.html',
@@ -31,6 +31,11 @@ const ASSETS = [
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './assets/examples/kingpin.jpg',
+  './assets/examples/dog-clip.jpg',
+  './assets/examples/airlines.jpg',
+  './assets/examples/legs.jpg',
+  './assets/examples/brake.jpg',
 ];
 
 self.addEventListener('install', event => {
