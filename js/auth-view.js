@@ -45,7 +45,7 @@ export function renderAuth(root, { onAuthed } = {}) {
         <button id="toggleBtn" class="btn-secondary">Need an account? Sign Up</button>
 
         <h3>What's included</h3>
-        <p class="muted small">Click below to learn more.</p>
+        <p class="muted small landing-tight-heading">Click below to learn more.</p>
         <div class="home-grid">
           <button class="tile" id="exampleChecklistBtn">
             <span class="tile-icon">🔗</span>
