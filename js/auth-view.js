@@ -73,7 +73,7 @@ export function renderAuth(root, { onAuthed } = {}) {
         </div>
 
         <h3>Who it's for</h3>
-        <p class="instruction">Used by drivers to record every trailer coupling and
+        <p class="instruction landing-tight-heading">Used by drivers to record every trailer coupling and
           uncoupling with photo evidence — replacing paper checklists with a reliable,
           timestamped digital record.</p>
 
