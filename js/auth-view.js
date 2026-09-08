@@ -77,8 +77,7 @@ export function renderAuth(root, { onAuthed } = {}) {
           uncoupling with photo evidence — replacing paper checklists with a reliable,
           timestamped digital record.</p>
 
-        <p class="muted small version-tag">v${APP_VERSION}</p>
-        <p class="muted small version-tag">Built by RND Tech.</p>
+        <p class="muted small version-tag landing-footer-tag">v${APP_VERSION}<br>Built by RND Tech.</p>
       </div>
     `;
     root.querySelector('#signInLinkBtn').onclick = () => {
