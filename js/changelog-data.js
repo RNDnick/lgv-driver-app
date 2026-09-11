@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.18.2',
+    date: '11 Sep 2026',
+    summary: 'Fixed a bug where tapping Save Record (or Save Job) more than once - e.g. if it felt slow to respond - could create several duplicate entries in History or Job Log. The button now shows "Saving…" and can\'t be tapped again until it\'s done.',
+  },
+  {
     version: '1.18.1',
     date: '8 Sep 2026',
     summary: 'The "Job & Delivery Log" tile on the Sign In screen is now tappable too, showing a made-up example job list you can tap into for the full detail.',

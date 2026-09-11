@@ -106,6 +106,10 @@ export async function renderJobLog(root, { onExit } = {}) {
 
   function renderForm(draft) {
     activeScreen = { screen: 'form' };
+    // Generated once per rendered form, not per Save Job click - see the
+    // matching comment in checklist-view.js for why a fresh id per click is
+    // the actual cause of duplicate-looking records from repeat taps.
+    const formJobId = newId();
     root.innerHTML = `
       <div class="screen">
         <h2>New Job</h2>
@@ -122,14 +126,18 @@ export async function renderJobLog(root, { onExit } = {}) {
       </div>
     `;
     FORM_FIELDS.forEach(id => root.querySelector('#' + id)?.addEventListener('input', scheduleFormDraftSave));
-    root.querySelector('#saveBtn').onclick = async () => {
+    root.querySelector('#saveBtn').onclick = async event => {
       const trailerReg = root.querySelector('#trailerReg').value.trim();
       if (!trailerReg) {
         root.querySelector('#formError').style.display = 'block';
         return;
       }
+      const btn = event.currentTarget;
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
       const job = {
-        id: newId(),
+        id: formJobId,
         status: 'open',
         createdAt: Date.now(),
         customer: root.querySelector('#customer').value.trim(),

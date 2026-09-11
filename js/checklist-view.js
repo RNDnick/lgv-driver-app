@@ -21,6 +21,12 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
   let jobId = '';
   let stream = null;
   const captures = []; // confirmed steps only, in order: { key, title, completedAt, photo, photoHash }
+  // Generated once per flow, not per Save Record click - a slow save (several
+  // photo Blobs to write locally, plus unwinding the step history) invited
+  // repeat taps with no feedback, and a fresh id per click turned each tap
+  // into a genuinely separate record. A stable id means a re-tap re-saves
+  // the same record (upsert) instead of creating a duplicate.
+  const recordId = newId();
 
   const openJobs = (await sync.getMergedJobs()).filter(j => j.status === 'open');
   const sub = createSubRouter(type);
@@ -246,9 +252,13 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
         openLightbox(sub, { index }, URL.createObjectURL(c.photo), c.title);
       };
     });
-    root.querySelector('#saveBtn').onclick = async () => {
+    root.querySelector('#saveBtn').onclick = async event => {
+      const btn = event.currentTarget;
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
       const record = {
-        id: newId(),
+        id: recordId,
         type,
         trailerReg,
         jobId: jobId || null,
