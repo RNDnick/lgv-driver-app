@@ -191,3 +191,16 @@ create policy "checklist_photos_update" on storage.objects
     bucket_id = 'checklist-photos'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+-- No delete capability in the app itself (photos are meant to be permanent
+-- evidence) - this exists purely so a manager can clear out orphaned photos
+-- left behind by a deleted duplicate/erroneous checklist row, via the
+-- Storage API (Supabase blocks direct SQL DELETE on storage.objects).
+create policy "checklist_photos_delete" on storage.objects
+  for delete using (
+    bucket_id = 'checklist-photos'
+    and (
+      (storage.foldername(name))[1] = auth.uid()::text
+      or public.is_manager(auth.uid())
+    )
+  );
