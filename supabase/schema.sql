@@ -1,25 +1,53 @@
 -- SafeCouple: schema, RLS policies, and storage bucket.
 -- Run this once in the Supabase SQL Editor for this project.
 
+-- ── companies ───────────────────────────────────────────────────────────
+-- Every fleet (paying customer) is a company. Every other table below is
+-- scoped to one, so one fleet's manager can never see another fleet's data
+-- - a signup always creates its own new company (see handle_new_user below);
+-- there's no self-serve "join an existing company" flow yet, that's a known
+-- gap until there's a real second paying customer.
+create table public.companies (
+  id uuid primary key,
+  name text not null,
+  created_at bigint not null
+);
+
 -- ── profiles ────────────────────────────────────────────────────────────
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
+  company_id uuid not null references public.companies(id),
   full_name text,
   role text not null default 'driver' check (role in ('driver', 'manager')),
   created_at bigint not null default (extract(epoch from now()) * 1000)::bigint
 );
 
+create index profiles_company_id_idx on public.profiles (company_id);
 alter table public.profiles enable row level security;
 
+-- Every signup creates its own new company and becomes its first (driver)
+-- member - promoting that account to 'manager' is still the manual Table
+-- Editor step it always was.
 create function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  new_company_id uuid;
 begin
-  insert into public.profiles (id, full_name)
-  values (new.id, new.raw_user_meta_data ->> 'full_name');
+  insert into public.companies (id, name, created_at)
+  values (
+    gen_random_uuid(),
+    coalesce(new.raw_user_meta_data ->> 'company_name', 'My Company'),
+    (extract(epoch from now()) * 1000)::bigint
+  )
+  returning id into new_company_id;
+
+  insert into public.profiles (id, company_id, full_name)
+  values (new.id, new_company_id, new.raw_user_meta_data ->> 'full_name');
+
   return new;
 end;
 $$;
@@ -38,6 +66,20 @@ as $$
   select exists (
     select 1 from public.profiles where id = uid and role = 'manager'
   );
+$$;
+
+-- security definer so it bypasses RLS itself (same reasoning as is_manager
+-- above) - every company-scoped policy below calls this rather than
+-- repeating the subquery, and rather than risking a recursive-policy issue
+-- by selecting from profiles under profiles' own RLS.
+create function public.my_company_id()
+returns uuid
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select company_id from public.profiles where id = auth.uid();
 $$;
 
 create function public.prevent_role_change()
@@ -59,7 +101,10 @@ create trigger profiles_prevent_role_change
   for each row execute function public.prevent_role_change();
 
 create policy "profiles_select" on public.profiles
-  for select using (auth.uid() = id or public.is_manager(auth.uid()));
+  for select using (
+    auth.uid() = id
+    or (public.is_manager(auth.uid()) and company_id = public.my_company_id())
+  );
 
 create policy "profiles_update_own" on public.profiles
   for update using (auth.uid() = id);
@@ -69,6 +114,7 @@ grant select, update on public.profiles to authenticated;
 -- ── jobs ────────────────────────────────────────────────────────────────
 create table public.jobs (
   id uuid primary key,
+  company_id uuid not null references public.companies(id),
   driver_id uuid not null references public.profiles(id) on delete cascade,
   status text not null default 'open' check (status in ('open', 'complete')),
   created_at bigint not null,
@@ -85,12 +131,16 @@ create table public.jobs (
 );
 
 create index jobs_driver_id_idx on public.jobs (driver_id);
+create index jobs_company_id_idx on public.jobs (company_id);
 alter table public.jobs enable row level security;
 
 create policy "jobs_select" on public.jobs
-  for select using (driver_id = auth.uid() or public.is_manager(auth.uid()));
+  for select using (
+    driver_id = auth.uid()
+    or (public.is_manager(auth.uid()) and company_id = public.my_company_id())
+  );
 create policy "jobs_insert" on public.jobs
-  for insert with check (driver_id = auth.uid());
+  for insert with check (driver_id = auth.uid() and company_id = public.my_company_id());
 create policy "jobs_update" on public.jobs
   for update using (driver_id = auth.uid());
 create policy "jobs_delete" on public.jobs
@@ -101,6 +151,7 @@ grant select, insert, update, delete on public.jobs to authenticated;
 -- ── checklists ──────────────────────────────────────────────────────────
 create table public.checklists (
   id uuid primary key,
+  company_id uuid not null references public.companies(id),
   driver_id uuid not null references public.profiles(id) on delete cascade,
   type text not null check (type in ('connect', 'disconnect', 'close-connect', 'close-disconnect')),
   trailer_reg text,
@@ -112,12 +163,16 @@ create table public.checklists (
 
 create index checklists_driver_id_idx on public.checklists (driver_id);
 create index checklists_job_id_idx on public.checklists (job_id);
+create index checklists_company_id_idx on public.checklists (company_id);
 alter table public.checklists enable row level security;
 
 create policy "checklists_select" on public.checklists
-  for select using (driver_id = auth.uid() or public.is_manager(auth.uid()));
+  for select using (
+    driver_id = auth.uid()
+    or (public.is_manager(auth.uid()) and company_id = public.my_company_id())
+  );
 create policy "checklists_insert" on public.checklists
-  for insert with check (driver_id = auth.uid());
+  for insert with check (driver_id = auth.uid() and company_id = public.my_company_id());
 create policy "checklists_update" on public.checklists
   for update using (driver_id = auth.uid());
 create policy "checklists_delete" on public.checklists
@@ -128,19 +183,24 @@ grant select, insert, update, delete on public.checklists to authenticated;
 -- ── feedback ────────────────────────────────────────────────────────────
 create table public.feedback (
   id uuid primary key,
+  company_id uuid not null references public.companies(id),
   driver_id uuid not null references public.profiles(id) on delete cascade,
   message text not null,
   created_at bigint not null
 );
 
 create index feedback_driver_id_idx on public.feedback (driver_id);
+create index feedback_company_id_idx on public.feedback (company_id);
 alter table public.feedback enable row level security;
 
 -- Attributed, not anonymous, so a manager can follow up on a message.
 create policy "feedback_select" on public.feedback
-  for select using (driver_id = auth.uid() or public.is_manager(auth.uid()));
+  for select using (
+    driver_id = auth.uid()
+    or (public.is_manager(auth.uid()) and company_id = public.my_company_id())
+  );
 create policy "feedback_insert" on public.feedback
-  for insert with check (driver_id = auth.uid());
+  for insert with check (driver_id = auth.uid() and company_id = public.my_company_id());
 
 -- The client sends feedback via upsert() for retry-safety (same reasoning as
 -- checklist_photos_update above: a retried send after a dropped response
@@ -160,12 +220,22 @@ insert into storage.buckets (id, name, public)
 values ('checklist-photos', 'checklist-photos', false)
 on conflict (id) do nothing;
 
+-- storage.objects has no company_id column of its own, so the manager-bypass
+-- branch here joins from the driver_id folder segment back to that driver's
+-- own profile to compare companies, rather than a flat column check.
 create policy "checklist_photos_select" on storage.objects
   for select using (
     bucket_id = 'checklist-photos'
     and (
       (storage.foldername(name))[1] = auth.uid()::text
-      or public.is_manager(auth.uid())
+      or (
+        public.is_manager(auth.uid())
+        and exists (
+          select 1 from public.profiles p
+          where p.id = ((storage.foldername(name))[1])::uuid
+          and p.company_id = public.my_company_id()
+        )
+      )
     )
   );
 
@@ -201,6 +271,13 @@ create policy "checklist_photos_delete" on storage.objects
     bucket_id = 'checklist-photos'
     and (
       (storage.foldername(name))[1] = auth.uid()::text
-      or public.is_manager(auth.uid())
+      or (
+        public.is_manager(auth.uid())
+        and exists (
+          select 1 from public.profiles p
+          where p.id = ((storage.foldername(name))[1])::uuid
+          and p.company_id = public.my_company_id()
+        )
+      )
     )
   );

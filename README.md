@@ -3,6 +3,9 @@
 A mobile-first web app for LGV drivers: a photo-verified trailer coupling/uncoupling
 checklist, plus a job & delivery log. Each driver has their own private login;
 data is synced to a shared Supabase backend so it isn't stuck on one device.
+Multi-tenant: signing up creates a new company, and one company can never see
+another's data — this is a product meant to be sold to multiple separate fleets,
+not just RND Tech's own.
 
 ## Features
 
@@ -101,22 +104,28 @@ the browser using a public, RLS-protected key — there's no server to run or ho
 
 1. Create a Supabase project.
 2. Run `supabase/schema.sql` in the Supabase SQL Editor — it creates the
-   `profiles`/`jobs`/`checklists` tables, Row-Level Security policies, and the
-   private `checklist-photos` storage bucket.
+   `companies`/`profiles`/`jobs`/`checklists`/`feedback` tables, Row-Level
+   Security policies, and the private `checklist-photos` storage bucket.
 3. In Authentication → URL Configuration, add your deployed URL to the redirect
    allow-list.
 4. Put your project's URL and publishable/anon key in `js/supabase-client.js`.
    These are safe to be public — access is enforced by RLS, not by keeping the
    key secret. Never put the `service_role` key here.
-5. To make an account a fleet manager (read access to every driver's data),
-   set that row's `role` to `'manager'` in the `profiles` table via Supabase's
-   Table Editor — there's no in-app UI for this yet.
+5. Signing up creates a brand-new company automatically (the "Company name"
+   field on Sign Up) — there's no in-app way yet for a second driver to join an
+   *existing* company, so for now add them to the same company row manually via
+   Supabase's Table Editor if needed.
+6. To make an account a fleet manager (read access to every driver's data
+   *within their own company only*), set that row's `role` to `'manager'` in
+   the `profiles` table via Supabase's Table Editor — there's no in-app UI for
+   this yet.
 
 ## Data & privacy
 
 Jobs, checklist records, and photos are stored in your Supabase project,
 scoped per driver by Row-Level Security — one driver cannot see another
-driver's data, except a `manager`-role account, which can see everyone's.
-A save is written to a local on-device queue first and synced to Supabase
-in the background, so it survives being offline; it only becomes visible
-to anyone else (including a manager) once that sync completes.
+driver's data, except a `manager`-role account, which can see everyone's
+*within the same company* — never another company's data, even another
+manager's. A save is written to a local on-device queue first and synced to
+Supabase in the background, so it survives being offline; it only becomes
+visible to anyone else (including a manager) once that sync completes.

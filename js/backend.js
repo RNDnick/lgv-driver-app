@@ -17,11 +17,11 @@ export async function signIn(email, password) {
   if (error) throw error;
 }
 
-export async function signUp(email, password, fullName) {
+export async function signUp(email, password, fullName, companyName) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName } },
+    options: { data: { full_name: fullName, company_name: companyName } },
   });
   if (error) throw error;
   return data;
@@ -39,9 +39,19 @@ export async function getCurrentProfile() {
   return data;
 }
 
-function toJobRow(job, driverId) {
+// Every insert needs its own row's company_id (the insert RLS policies check
+// it against the caller's own company) - fetched fresh rather than cached,
+// since these are already multi-step async saves (photo upload, etc.) where
+// one more request is negligible next to correctness.
+async function getMyCompanyId() {
+  const profile = await getCurrentProfile();
+  return profile?.company_id ?? null;
+}
+
+function toJobRow(job, driverId, companyId) {
   return {
     id: job.id,
+    company_id: companyId,
     driver_id: driverId,
     status: job.status,
     created_at: job.createdAt,
@@ -147,6 +157,7 @@ export async function syncJob(job, photos = {}) {
   const session = await getSession();
   if (!session) throw new Error('Not signed in');
   const driverId = session.user.id;
+  const companyId = await getMyCompanyId();
 
   let podPhotoPath = job.podPhotoPath || null;
   if (photos.pod) {
@@ -157,7 +168,7 @@ export async function syncJob(job, photos = {}) {
     if (error) throw new Error(`Photo upload failed: ${error.message}`);
   }
 
-  const { error } = await supabase.from('jobs').upsert(toJobRow({ ...job, podPhotoPath }, driverId));
+  const { error } = await supabase.from('jobs').upsert(toJobRow({ ...job, podPhotoPath }, driverId, companyId));
   if (error) throw new Error(`Saving job record failed: ${error.message}`);
 }
 
@@ -204,6 +215,7 @@ export async function syncChecklist(record, photos = {}) {
   const session = await getSession();
   if (!session) throw new Error('Not signed in');
   const driverId = session.user.id;
+  const companyId = await getMyCompanyId();
 
   const steps = [];
   for (const step of record.steps) {
@@ -221,6 +233,7 @@ export async function syncChecklist(record, photos = {}) {
 
   const row = {
     id: record.id,
+    company_id: companyId,
     driver_id: driverId,
     type: record.type,
     trailer_reg: record.trailerReg,
@@ -236,8 +249,10 @@ export async function syncChecklist(record, photos = {}) {
 export async function syncFeedback(feedback) {
   const session = await getSession();
   if (!session) throw new Error('Not signed in');
+  const companyId = await getMyCompanyId();
   const { error } = await supabase.from('feedback').upsert({
     id: feedback.id,
+    company_id: companyId,
     driver_id: session.user.id,
     message: feedback.message,
     created_at: feedback.createdAt,

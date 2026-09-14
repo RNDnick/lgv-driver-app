@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.19.0',
+    date: '14 Sep 2026',
+    summary: 'Sign Up now sets up your own separate company account (new "Company name" field) - foundation for this becoming a proper multi-fleet product, with each company\'s data kept completely separate from every other\'s.',
+  },
+  {
     version: '1.18.2',
     date: '11 Sep 2026',
     summary: 'Fixed a bug where tapping Save Record (or Save Job) more than once - e.g. if it felt slow to respond - could create several duplicate entries in History or Job Log. The button now shows "Saving…" and can\'t be tapped again until it\'s done.',

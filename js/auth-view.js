@@ -259,6 +259,8 @@ export function renderAuth(root, { onAuthed } = {}) {
         <h1>SafeCouple</h1>
         <h2>Create Account</h2>
         <label class="field"><span>Full name</span><input id="fullName" type="text" autocomplete="name" /></label>
+        <label class="field"><span>Company name</span><input id="companyName" type="text" autocomplete="organization" /></label>
+        <p class="muted small">Sets up a new company account, with you as its first member - each company's data is completely separate from every other's.</p>
         <label class="field"><span>Email</span><input id="email" type="email" autocomplete="email" /></label>
         <label class="field"><span>Password</span><input id="password" type="password" autocomplete="new-password" /></label>
         <p id="authError" class="error" style="display:none"></p>
@@ -275,10 +277,16 @@ export function renderAuth(root, { onAuthed } = {}) {
       const email = root.querySelector('#email').value.trim();
       const password = root.querySelector('#password').value;
       const fullName = root.querySelector('#fullName').value.trim();
+      const companyName = root.querySelector('#companyName').value.trim();
       const errEl = root.querySelector('#authError');
       errEl.style.display = 'none';
+      if (!companyName) {
+        errEl.textContent = 'Company name is required.';
+        errEl.style.display = 'block';
+        return;
+      }
       try {
-        const { session } = await backend.signUp(email, password, fullName);
+        const { session } = await backend.signUp(email, password, fullName, companyName);
         if (session) {
           onAuthed && onAuthed();
         } else {
