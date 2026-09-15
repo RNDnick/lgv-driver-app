@@ -258,6 +258,10 @@ export async function renderWalkaroundFlow(root, { onExit } = {}) {
       item.photo = photo;
       item.photoHash = photoHash;
       item.completedAt = Date.now();
+      // Stable id for the defects row this item will create on save - kept
+      // once set (even across a retake) so a re-save upserts the same
+      // defect rather than raising a second one.
+      item.defectId = item.defectId || newId();
       await saveDraft();
       history.go(-2); // back past this review and the camera screen, to the list
     };
@@ -301,7 +305,7 @@ export async function renderWalkaroundFlow(root, { onExit } = {}) {
         completedAt: Date.now(),
         items: items.map(i => ({
           key: i.key, label: i.label, status: i.status, description: i.description,
-          completedAt: i.completedAt, photoPath: null, photoHash: i.photoHash,
+          completedAt: i.completedAt, photoPath: null, photoHash: i.photoHash, defectId: i.defectId || null,
         })),
       };
       const photos = Object.fromEntries(defects.map(d => [d.key, d.photo]));

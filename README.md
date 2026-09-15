@@ -24,6 +24,13 @@ not just RND Tech's own.
   coupling and done every shift regardless of whether a trailer's attached.
   Each item is a quick pass/fail rather than a mandatory photo — marking one a
   defect prompts for a photo and a short description on the spot.
+- **Defect Reporting** — marking a walkaround item "Defect", or using the
+  optional "Report a Defect" button on a coupling checklist step, raises a
+  tracked defect a manager can see on the Dashboard. Each one moves through
+  open → acknowledged → resolved, with resolution notes, giving a full audit
+  trail from a driver spotting a fault to it actually being fixed — only a
+  manager account can move a defect through that trail, not the driver who
+  raised it.
 - **Job & Delivery Log** — log collection/delivery sites, trailer reg, mileage,
   notes, and capture a proof-of-delivery photo when a job completes.
 - **History** — browse past checklist runs and their photos. Tap any photo
@@ -95,12 +102,14 @@ fallback.
   offline-safe way as everything else, and attributed to that driver (not
   anonymous) so a manager can follow up.
 - **Manager Dashboard** — a manager account (see below) gets an extra home
-  screen tile showing every driver's checklists, jobs, and submitted feedback
-  in one place, each tagged with who it belongs to. Tapping a checklist shows
-  its full photo evidence, same as History does for your own. Every other
-  screen (History, Job Log, the home screen's recent-activity list) only ever
-  shows your own records, manager account or not — the Dashboard is the one
-  place that shows everyone's.
+  screen tile showing every driver's checklists, walkaround checks, jobs,
+  defects, and submitted feedback in one place, each tagged with who it
+  belongs to. Tapping a checklist shows its full photo evidence, same as
+  History does for your own. Defects can be moved from open to acknowledged
+  to resolved right from their detail screen, with optional resolution
+  notes. Every other screen (History, Job Log, the home screen's
+  recent-activity list) only ever shows your own records, manager account or
+  not — the Dashboard is the one place that shows everyone's.
 
 ## Backend setup (Supabase)
 
@@ -109,8 +118,9 @@ the browser using a public, RLS-protected key — there's no server to run or ho
 
 1. Create a Supabase project.
 2. Run `supabase/schema.sql` in the Supabase SQL Editor — it creates the
-   `companies`/`profiles`/`jobs`/`checklists`/`feedback` tables, Row-Level
-   Security policies, and the private `checklist-photos` storage bucket.
+   `companies`/`profiles`/`jobs`/`checklists`/`walkaround_checks`/`defects`/
+   `feedback` tables, Row-Level Security policies, and the private
+   `checklist-photos` storage bucket.
 3. In Authentication → URL Configuration, add your deployed URL to the redirect
    allow-list.
 4. Put your project's URL and publishable/anon key in `js/supabase-client.js`.
@@ -134,3 +144,8 @@ driver's data, except a `manager`-role account, which can see everyone's
 manager's. A save is written to a local on-device queue first and synced to
 Supabase in the background, so it survives being offline; it only becomes
 visible to anyone else (including a manager) once that sync completes.
+
+Defects are the one asymmetric case: a driver can raise and read their own,
+but only a manager can change a defect's status (open/acknowledged/resolved)
+— enforced by Row-Level Security, not just hidden in the UI, so it's a real
+audit trail rather than something a driver could quietly self-close.

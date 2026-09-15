@@ -211,6 +211,54 @@ create policy "walkaround_checks_delete" on public.walkaround_checks
 
 grant select, insert, update, delete on public.walkaround_checks to authenticated;
 
+-- ── defects ─────────────────────────────────────────────────────────────
+-- Raised from either check (a walkaround item marked "Defect", or the
+-- optional "Report a defect" affordance on a coupling checklist step).
+-- Deliberately asymmetric RLS: a driver can raise and read their own
+-- defects, but can never change one's status themselves - only a
+-- same-company manager can move it open -> acknowledged -> resolved. That
+-- asymmetry is what makes the trail a real audit record instead of
+-- something a driver could quietly self-close, which is the actual point
+-- of this feature for a transport manager's compliance exposure.
+create table public.defects (
+  id uuid primary key,
+  company_id uuid not null references public.companies(id),
+  driver_id uuid not null references public.profiles(id) on delete cascade,
+  source_type text not null check (source_type in ('walkaround', 'coupling')),
+  source_id uuid not null,
+  item_label text not null,
+  vehicle_reg text,
+  description text not null,
+  photo_path text not null,
+  status text not null default 'open' check (status in ('open', 'acknowledged', 'resolved')),
+  created_at bigint not null,
+  acknowledged_at bigint,
+  resolved_at bigint,
+  resolved_notes text
+);
+
+create index defects_driver_id_idx on public.defects (driver_id);
+create index defects_company_id_idx on public.defects (company_id);
+create index defects_status_idx on public.defects (status);
+alter table public.defects enable row level security;
+
+create policy "defects_select" on public.defects
+  for select using (
+    driver_id = auth.uid()
+    or (public.is_manager(auth.uid()) and company_id = public.my_company_id())
+  );
+create policy "defects_insert" on public.defects
+  for insert with check (driver_id = auth.uid() and company_id = public.my_company_id());
+create policy "defects_update" on public.defects
+  for update using (public.is_manager(auth.uid()) and company_id = public.my_company_id())
+  with check (public.is_manager(auth.uid()) and company_id = public.my_company_id());
+
+-- No driver update grant/policy at all (see comment above) - the client
+-- inserts defects with upsert(..., { ignoreDuplicates: true }) so a retry
+-- after a dropped response does a harmless ON CONFLICT DO NOTHING instead
+-- of needing UPDATE privilege, which a driver must never have here.
+grant select, insert, update on public.defects to authenticated;
+
 -- ── feedback ────────────────────────────────────────────────────────────
 create table public.feedback (
   id uuid primary key,

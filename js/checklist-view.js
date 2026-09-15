@@ -215,7 +215,9 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
         <h2>${step.key} — ${step.title}</h2>
         <img src="${url}" class="photo-preview" alt="Captured evidence for ${step.title}" />
         ${warning ? `<p class="warning">${warning}</p>` : ''}
+        ${capture.isDefect ? `<p class="error small">⚠ Defect reported: ${capture.defectDescription}</p>` : ''}
         <button id="confirmBtn" class="btn-primary btn-large">${isRedisplay ? '✔ Continue' : '✔ Confirm'}</button>
+        <button id="defectBtn" class="btn-secondary">${capture.isDefect ? 'Edit Defect Report' : '⚠ Report a Defect'}</button>
         <button id="retakeBtn" class="btn-secondary">Retake</button>
       </div>
     `;
@@ -226,7 +228,48 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
       push({ index: nextIndex });
       renderStepOrReview(nextIndex);
     };
+    root.querySelector('#defectBtn').onclick = () => renderStepDefectForm(index, capture);
     root.querySelector('#retakeBtn').onclick = () => renderCameraScreen(index);
+  }
+
+  // Lets a driver flag a fault spotted on this step's own photo (e.g. a worn
+  // dog clip visible in the coupling shot) without leaving the checklist -
+  // reuses that same photo rather than capturing a second one, since it
+  // already shows the fault.
+  function renderStepDefectForm(index, capture) {
+    const step = steps[index];
+    const url = URL.createObjectURL(capture.photo);
+    root.innerHTML = `
+      <div class="screen">
+        <h2>${step.key} — ${step.title} — Defect</h2>
+        <img src="${url}" class="photo-preview" alt="Captured evidence for ${step.title}" />
+        <label class="field">
+          <span>Describe the fault</span>
+          <textarea id="description" rows="3" placeholder="What's wrong, and where">${capture.defectDescription || ''}</textarea>
+        </label>
+        <p id="descError" class="error" style="display:none">Please describe the fault.</p>
+        <button id="confirmDefectBtn" class="btn-primary btn-large">⚠ Confirm Defect & Continue</button>
+        <button id="cancelBtn" class="btn-secondary">Cancel</button>
+      </div>
+    `;
+    root.querySelector('#confirmDefectBtn').onclick = async () => {
+      const desc = root.querySelector('#description').value.trim();
+      if (!desc) {
+        root.querySelector('#descError').style.display = 'block';
+        return;
+      }
+      capture.isDefect = true;
+      capture.defectDescription = desc;
+      // Stable id, kept once set - see the matching comment in
+      // walkaround-view.js for why.
+      capture.defectId = capture.defectId || newId();
+      captures[index] = capture;
+      await saveDraft();
+      const nextIndex = index + 1;
+      push({ index: nextIndex });
+      renderStepOrReview(nextIndex);
+    };
+    root.querySelector('#cancelBtn').onclick = () => renderReviewScreen(index, capture, true);
   }
 
   function renderSummary(index) {
@@ -238,7 +281,7 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
           ${captures.map((c, i) => `
             <div class="thumb">
               <img src="${URL.createObjectURL(c.photo)}" alt="${c.title}" data-index="${i}" />
-              <span>${c.key} · ${c.title}</span>
+              <span>${c.key} · ${c.title}${c.isDefect ? ' <span class="badge open">defect</span>' : ''}</span>
             </div>
           `).join('')}
         </div>
@@ -264,7 +307,10 @@ export async function renderChecklistFlow(root, type, { onExit } = {}) {
         jobId: jobId || null,
         startedAt: captures[0]?.completedAt || Date.now(),
         completedAt: Date.now(),
-        steps: captures.map(c => ({ key: c.key, title: c.title, completedAt: c.completedAt, photoPath: null, photoHash: c.photoHash })),
+        steps: captures.map(c => ({
+          key: c.key, title: c.title, completedAt: c.completedAt, photoPath: null, photoHash: c.photoHash,
+          isDefect: c.isDefect || false, defectDescription: c.defectDescription || null, defectId: c.defectId || null,
+        })),
       };
       const photos = Object.fromEntries(captures.map(c => [c.key, c.photo]));
       await sync.enqueue('checklist', record, photos);

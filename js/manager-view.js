@@ -59,6 +59,21 @@ function jobItemHtml(j) {
   `;
 }
 
+const DEFECT_BADGE = { open: 'open', acknowledged: 'pending', resolved: 'complete' };
+
+function defectItemHtml(d) {
+  return `
+    <div class="list-item" data-kind="defect" data-id="${d.id}">
+      <div class="list-item-main">
+        <strong>${escapeHtml(d.itemLabel)}</strong>
+        <span class="badge ${DEFECT_BADGE[d.status]}">${d.status}</span>
+        <div class="muted">${escapeHtml(d.vehicleReg || 'No reg')}</div>
+        <div class="muted small">${fmtDate(d.createdAt)}</div>
+      </div>
+    </div>
+  `;
+}
+
 function feedbackItemHtml(f) {
   return `
     <div class="list-item">
@@ -75,12 +90,18 @@ function feedbackItemHtml(f) {
 // Log, not here.
 export async function renderManagerDashboard(root, { onExit } = {}) {
   const sub = createSubRouter('manager');
-  const [checklists, walkarounds, jobs, feedback] = await Promise.all([
+  const [checklists, walkarounds, jobs, feedback, defectsRaw] = await Promise.all([
     backend.getAllChecklistsForManager(),
     backend.getAllWalkaroundChecksForManager(),
     backend.getAllJobsForManager(),
     backend.getAllFeedback(),
+    backend.getAllDefectsForManager(),
   ]);
+  // Open defects are the ones needing attention, so they're surfaced first
+  // within each driver's group - already sorted newest-first by the backend
+  // within that.
+  const statusRank = { open: 0, acknowledged: 1, resolved: 2 };
+  const defects = [...defectsRaw].sort((a, b) => statusRank[a.status] - statusRank[b.status]);
 
   // Persists across a drill-in/back round trip within this screen (the
   // manager searched "Kurt", tapped a record, hit back - they'd expect to
@@ -121,12 +142,19 @@ export async function renderManagerDashboard(root, { onExit } = {}) {
         renderJobDetail(jobs.find(j => j.id === el.dataset.id));
       };
     });
+    root.querySelectorAll('.list-item[data-kind="defect"]').forEach(el => {
+      el.onclick = () => {
+        sub.push({ screen: 'defect', id: el.dataset.id });
+        renderDefectDetail(defects.find(d => d.id === el.dataset.id));
+      };
+    });
   }
 
   // Only rebuilds the results container, not the search input itself, so
   // typing doesn't lose focus/cursor position on every keystroke.
   function renderSections() {
     root.querySelector('#dashboardSections').innerHTML = `
+      ${sectionHtml('Defects', defects, defectItemHtml, 'No defects reported yet.')}
       ${sectionHtml('Checklists', checklists, checklistItemHtml, 'No checklist records yet.')}
       ${sectionHtml('Walkaround Checks', walkarounds, walkaroundItemHtml, 'No walkaround checks yet.')}
       ${sectionHtml('Jobs', jobs, jobItemHtml, 'No jobs logged yet.')}
@@ -185,9 +213,9 @@ export async function renderManagerDashboard(root, { onExit } = {}) {
   }
 
   async function renderWalkaroundDetail(record) {
-    const defects = record.items.filter(i => i.status === 'defect');
+    const defectItems = record.items.filter(i => i.status === 'defect');
     const defectPhotoUrls = await Promise.all(
-      defects.map(i => (i.photoPath ? backend.getPhotoUrl(i.photoPath) : null))
+      defectItems.map(i => (i.photoPath ? backend.getPhotoUrl(i.photoPath) : null))
     );
     root.innerHTML = `
       <div class="screen">
@@ -203,10 +231,10 @@ export async function renderManagerDashboard(root, { onExit } = {}) {
             </div>
           `).join('')}
         </div>
-        ${defects.length ? `
+        ${defectItems.length ? `
         <h3>Defect photos</h3>
         <div class="thumb-grid">
-          ${defects.map((d, i) => `
+          ${defectItems.map((d, i) => `
             <div class="thumb">
               <img src="${defectPhotoUrls[i] || ''}" alt="${d.label}" data-index="${i}" />
               <span>${d.label}</span>
@@ -220,10 +248,75 @@ export async function renderManagerDashboard(root, { onExit } = {}) {
       if (!img.src) return;
       img.onclick = () => {
         const i = Number(img.dataset.index);
-        openLightbox(sub, { screen: 'walkaround', id: record.id }, defectPhotoUrls[i], defects[i].label);
+        openLightbox(sub, { screen: 'walkaround', id: record.id }, defectPhotoUrls[i], defectItems[i].label);
       };
     });
     root.querySelector('#backBtn').onclick = () => history.back();
+  }
+
+  // Mutates `record` in place on Acknowledge/Resolve - it's the same object
+  // held in the shared `defects` array, so going back to the list (which
+  // re-renders from that array) picks up the new status without a re-fetch.
+  async function renderDefectDetail(record) {
+    const photoUrl = record.photoPath ? await backend.getPhotoUrl(record.photoPath) : null;
+    let resolving = false;
+
+    function draw() {
+      root.innerHTML = `
+        <div class="screen">
+          <h2>${escapeHtml(record.itemLabel)}</h2>
+          <span class="badge ${DEFECT_BADGE[record.status]}">${record.status}</span>
+          <p class="muted">${escapeHtml(record.driverName)} · ${escapeHtml(record.vehicleReg || 'No reg')} · ${fmtDate(record.createdAt)}</p>
+          <p>${escapeHtml(record.description)}</p>
+          ${photoUrl ? `<img class="photo-preview" id="defectPhoto" src="${photoUrl}" alt="${escapeHtml(record.itemLabel)}" />` : ''}
+          ${record.status === 'resolved' ? `<p class="muted small">Resolved ${fmtDate(record.resolvedAt)}${record.resolvedNotes ? ' · ' + escapeHtml(record.resolvedNotes) : ''}</p>` : ''}
+          ${record.status === 'open' ? '<button id="ackBtn" class="btn-primary btn-large">Acknowledge</button>' : ''}
+          ${record.status !== 'resolved' && !resolving ? '<button id="resolveBtn" class="btn-secondary">Resolve</button>' : ''}
+          ${resolving ? `
+            <label class="field">
+              <span>Resolution notes (optional)</span>
+              <textarea id="resolveNotes" rows="3" placeholder="What was done about it"></textarea>
+            </label>
+            <button id="confirmResolveBtn" class="btn-primary btn-large">✔ Confirm Resolved</button>
+            <button id="cancelResolveBtn" class="btn-secondary">Cancel</button>
+          ` : ''}
+          <button id="backBtn" class="btn-secondary">Back</button>
+        </div>
+      `;
+      if (photoUrl) {
+        root.querySelector('#defectPhoto').onclick = () => {
+          openLightbox(sub, { screen: 'defect', id: record.id }, photoUrl, record.itemLabel);
+        };
+      }
+      const ackBtn = root.querySelector('#ackBtn');
+      if (ackBtn) ackBtn.onclick = async () => {
+        ackBtn.disabled = true;
+        await backend.updateDefectStatus(record.id, 'acknowledged');
+        record.status = 'acknowledged';
+        record.acknowledgedAt = Date.now();
+        draw();
+      };
+      const resolveBtn = root.querySelector('#resolveBtn');
+      if (resolveBtn) resolveBtn.onclick = () => { resolving = true; draw(); };
+      const cancelResolveBtn = root.querySelector('#cancelResolveBtn');
+      if (cancelResolveBtn) cancelResolveBtn.onclick = () => { resolving = false; draw(); };
+      const confirmResolveBtn = root.querySelector('#confirmResolveBtn');
+      if (confirmResolveBtn) confirmResolveBtn.onclick = async event => {
+        const btn = event.currentTarget;
+        if (btn.disabled) return;
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+        const notes = root.querySelector('#resolveNotes').value.trim();
+        await backend.updateDefectStatus(record.id, 'resolved', notes);
+        record.status = 'resolved';
+        record.resolvedAt = Date.now();
+        record.resolvedNotes = notes || null;
+        resolving = false;
+        draw();
+      };
+      root.querySelector('#backBtn').onclick = () => history.back();
+    }
+    draw();
   }
 
   async function renderJobDetail(job) {
@@ -262,6 +355,10 @@ export async function renderManagerDashboard(root, { onExit } = {}) {
     if (screen && screen.screen === 'job') {
       const job = jobs.find(j => j.id === screen.id);
       if (job) return renderJobDetail(job);
+    }
+    if (screen && screen.screen === 'defect') {
+      const record = defects.find(d => d.id === screen.id);
+      if (record) return renderDefectDetail(record);
     }
     renderShell();
   });

@@ -223,6 +223,35 @@ export async function getAllChecklistsForManager() {
   return data.map(row => ({ ...fromChecklistRow(row), driverName: names[row.driver_id] || 'Unknown driver' }));
 }
 
+// Builds the row for a defect raised from a checklist step or walkaround
+// item. Reuses that item/step's own already-uploaded photo rather than
+// capturing a second one - by the time this runs, photoPath is guaranteed
+// to point at a real uploaded file since it's built right after that upload.
+function toDefectRow({ id, companyId, driverId, sourceType, sourceId, itemLabel, vehicleReg, description, photoPath, createdAt }) {
+  return {
+    id,
+    company_id: companyId,
+    driver_id: driverId,
+    source_type: sourceType,
+    source_id: sourceId,
+    item_label: itemLabel,
+    vehicle_reg: vehicleReg || null,
+    description,
+    photo_path: photoPath,
+    status: 'open',
+    created_at: createdAt,
+  };
+}
+
+// ignoreDuplicates -> ON CONFLICT DO NOTHING, so a retried sync after a
+// dropped response harmlessly no-ops instead of needing UPDATE privilege -
+// see the schema.sql comment on why a driver must never have that here.
+async function insertDefects(rows) {
+  if (!rows.length) return;
+  const { error } = await supabase.from('defects').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+  if (error) throw new Error(`Saving defect report failed: ${error.message}`);
+}
+
 export async function syncChecklist(record, photos = {}) {
   const session = await getSession();
   if (!session) throw new Error('Not signed in');
@@ -230,6 +259,7 @@ export async function syncChecklist(record, photos = {}) {
   const companyId = await getMyCompanyId();
 
   const steps = [];
+  const defectRows = [];
   for (const step of record.steps) {
     let photoPath = step.photoPath || null;
     const blob = photos[step.key];
@@ -240,7 +270,17 @@ export async function syncChecklist(record, photos = {}) {
         .upload(photoPath, blob, { upsert: true, contentType: 'image/jpeg' });
       if (error) throw new Error(`Photo upload failed (step ${step.key}): ${error.message}`);
     }
-    steps.push({ key: step.key, title: step.title, completedAt: step.completedAt, photoPath, photoHash: step.photoHash || null });
+    steps.push({
+      key: step.key, title: step.title, completedAt: step.completedAt, photoPath, photoHash: step.photoHash || null,
+      isDefect: step.isDefect || false, defectDescription: step.defectDescription || null,
+    });
+    if (step.isDefect) {
+      defectRows.push(toDefectRow({
+        id: step.defectId, companyId, driverId, sourceType: 'coupling', sourceId: record.id,
+        itemLabel: `${step.key} — ${step.title}`, vehicleReg: record.trailerReg,
+        description: step.defectDescription, photoPath, createdAt: step.completedAt,
+      }));
+    }
   }
 
   const row = {
@@ -256,6 +296,7 @@ export async function syncChecklist(record, photos = {}) {
   };
   const { error } = await supabase.from('checklists').upsert(row);
   if (error) throw new Error(`Saving checklist record failed: ${error.message}`);
+  await insertDefects(defectRows);
 }
 
 function fromWalkaroundRow(row) {
@@ -297,6 +338,7 @@ export async function syncWalkaroundCheck(record, photos = {}) {
   const companyId = await getMyCompanyId();
 
   const items = [];
+  const defectRows = [];
   for (const item of record.items) {
     let photoPath = item.photoPath || null;
     const blob = photos[item.key];
@@ -311,6 +353,13 @@ export async function syncWalkaroundCheck(record, photos = {}) {
       key: item.key, label: item.label, status: item.status, description: item.description,
       completedAt: item.completedAt, photoPath, photoHash: item.photoHash || null,
     });
+    if (item.status === 'defect') {
+      defectRows.push(toDefectRow({
+        id: item.defectId, companyId, driverId, sourceType: 'walkaround', sourceId: record.id,
+        itemLabel: item.label, vehicleReg: record.vehicleReg,
+        description: item.description, photoPath, createdAt: item.completedAt,
+      }));
+    }
   }
 
   const row = {
@@ -324,6 +373,7 @@ export async function syncWalkaroundCheck(record, photos = {}) {
   };
   const { error } = await supabase.from('walkaround_checks').upsert(row);
   if (error) throw new Error(`Saving walkaround check failed: ${error.message}`);
+  await insertDefects(defectRows);
 }
 
 export async function syncFeedback(feedback) {
@@ -353,6 +403,46 @@ export async function getAllFeedback() {
     message: row.message,
     createdAt: row.created_at,
   }));
+}
+
+function fromDefectRow(row) {
+  return {
+    id: row.id,
+    sourceType: row.source_type,
+    sourceId: row.source_id,
+    itemLabel: row.item_label,
+    vehicleReg: row.vehicle_reg,
+    description: row.description,
+    photoPath: row.photo_path,
+    status: row.status,
+    createdAt: row.created_at,
+    acknowledgedAt: row.acknowledged_at,
+    resolvedAt: row.resolved_at,
+    resolvedNotes: row.resolved_notes,
+  };
+}
+
+// Manager-only (see js/manager-view.js).
+export async function getAllDefectsForManager() {
+  const { data, error } = await supabase.from('defects').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  const names = await namesByDriverId(data.map(row => row.driver_id));
+  return data.map(row => ({ ...fromDefectRow(row), driverName: names[row.driver_id] || 'Unknown driver' }));
+}
+
+// Direct online call, not outbox-queued - acknowledging/resolving is a
+// manager action done from the office, not a driver action needing offline
+// resilience (mirrors deleteJob).
+export async function updateDefectStatus(id, status, notes) {
+  const patch = { status };
+  const now = Date.now();
+  if (status === 'acknowledged') patch.acknowledged_at = now;
+  if (status === 'resolved') {
+    patch.resolved_at = now;
+    patch.resolved_notes = notes || null;
+  }
+  const { error } = await supabase.from('defects').update(patch).eq('id', id);
+  if (error) throw error;
 }
 
 export async function getPhotoUrl(path, expiresIn = 3600) {

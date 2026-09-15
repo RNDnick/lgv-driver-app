@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.21.0',
+    date: '15 Sep 2026',
+    summary: "Added Defect Reporting: marking a defect on a Daily Walkaround Check, or reporting one from a coupling checklist step, now raises a tracked defect your transport manager can see. Managers get a new Defects section on the Dashboard to Acknowledge and Resolve each one, with notes - giving a full audit trail from spotting a fault to fixing it.",
+  },
+  {
     version: '1.20.0',
     date: '15 Sep 2026',
     summary: "Added the Daily Walkaround Check - your legally-required pre-trip inspection (tyres, lights, brakes, fluid leaks, mirrors and more), separate from trailer coupling. Each item is a quick pass/fail; marking a defect prompts for a photo and a short description. Shows up in History and the Manager Dashboard alongside your coupling checklists.",
