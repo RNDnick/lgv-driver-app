@@ -253,11 +253,17 @@ create policy "defects_update" on public.defects
   for update using (public.is_manager(auth.uid()) and company_id = public.my_company_id())
   with check (public.is_manager(auth.uid()) and company_id = public.my_company_id());
 
+-- No delete capability in the app itself - this exists purely so a manager
+-- can clear out an erroneous/duplicate defect, same reasoning as
+-- checklist_photos_delete below.
+create policy "defects_delete" on public.defects
+  for delete using (public.is_manager(auth.uid()) and company_id = public.my_company_id());
+
 -- No driver update grant/policy at all (see comment above) - the client
 -- inserts defects with upsert(..., { ignoreDuplicates: true }) so a retry
 -- after a dropped response does a harmless ON CONFLICT DO NOTHING instead
 -- of needing UPDATE privilege, which a driver must never have here.
-grant select, insert, update on public.defects to authenticated;
+grant select, insert, update, delete on public.defects to authenticated;
 
 -- ── feedback ────────────────────────────────────────────────────────────
 create table public.feedback (

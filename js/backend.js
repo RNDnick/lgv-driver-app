@@ -422,6 +422,17 @@ function fromDefectRow(row) {
   };
 }
 
+// Own records only - lets History show the current status of a defect a
+// driver personally raised (open/acknowledged/resolved), without needing
+// the manager-only "everyone's defects" query.
+export async function getMyDefects() {
+  const session = await getSession();
+  if (!session) return [];
+  const { data, error } = await supabase.from('defects').select('*').eq('driver_id', session.user.id);
+  if (error) throw error;
+  return data.map(fromDefectRow);
+}
+
 // Manager-only (see js/manager-view.js).
 export async function getAllDefectsForManager() {
   const { data, error } = await supabase.from('defects').select('*').order('created_at', { ascending: false });

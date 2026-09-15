@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.21.1',
+    date: '15 Sep 2026',
+    summary: "Your own History now shows a defect's current status (Open/Acknowledged/Resolved) on any check you reported one from, so you can see it's actually been actioned - not just that you raised it.",
+  },
+  {
     version: '1.21.0',
     date: '15 Sep 2026',
     summary: "Added Defect Reporting: marking a defect on a Daily Walkaround Check, or reporting one from a coupling checklist step, now raises a tracked defect your transport manager can see. Managers get a new Defects section on the Dashboard to Acknowledge and Resolve each one, with notes - giving a full audit trail from spotting a fault to fixing it.",
