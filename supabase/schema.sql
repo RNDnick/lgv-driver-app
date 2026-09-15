@@ -180,6 +180,37 @@ create policy "checklists_delete" on public.checklists
 
 grant select, insert, update, delete on public.checklists to authenticated;
 
+-- ── walkaround_checks ───────────────────────────────────────────────────
+-- The daily HGV pre-trip check - separate from trailer coupling, done every
+-- shift. RLS mirrors checklists exactly, same reasoning throughout.
+create table public.walkaround_checks (
+  id uuid primary key,
+  company_id uuid not null references public.companies(id),
+  driver_id uuid not null references public.profiles(id) on delete cascade,
+  vehicle_reg text not null,
+  started_at bigint,
+  completed_at bigint,
+  items jsonb not null default '[]'::jsonb
+);
+
+create index walkaround_checks_driver_id_idx on public.walkaround_checks (driver_id);
+create index walkaround_checks_company_id_idx on public.walkaround_checks (company_id);
+alter table public.walkaround_checks enable row level security;
+
+create policy "walkaround_checks_select" on public.walkaround_checks
+  for select using (
+    driver_id = auth.uid()
+    or (public.is_manager(auth.uid()) and company_id = public.my_company_id())
+  );
+create policy "walkaround_checks_insert" on public.walkaround_checks
+  for insert with check (driver_id = auth.uid() and company_id = public.my_company_id());
+create policy "walkaround_checks_update" on public.walkaround_checks
+  for update using (driver_id = auth.uid());
+create policy "walkaround_checks_delete" on public.walkaround_checks
+  for delete using (driver_id = auth.uid());
+
+grant select, insert, update, delete on public.walkaround_checks to authenticated;
+
 -- ── feedback ────────────────────────────────────────────────────────────
 create table public.feedback (
   id uuid primary key,

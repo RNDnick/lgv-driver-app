@@ -19,6 +19,11 @@ not just RND Tech's own.
     connect the kingpin, Clip, Legs, Brake.
   - **Close Trailer Uncoupling (BLCKA)** — Brake, Legs, Clip, Kingpin, then pull
     forward to access and disconnect the air lines.
+- **Daily Walkaround Check** — the legally-required UK HGV pre-trip inspection
+  (tyres, lights, brakes, fluid leaks, mirrors and more), separate from trailer
+  coupling and done every shift regardless of whether a trailer's attached.
+  Each item is a quick pass/fail rather than a mandatory photo — marking one a
+  defect prompts for a photo and a short description on the spot.
 - **Job & Delivery Log** — log collection/delivery sites, trailer reg, mileage,
   notes, and capture a proof-of-delivery photo when a job completes.
 - **History** — browse past checklist runs and their photos. Tap any photo

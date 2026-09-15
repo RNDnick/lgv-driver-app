@@ -3,6 +3,11 @@
 // developers.
 export const CHANGELOG = [
   {
+    version: '1.20.0',
+    date: '15 Sep 2026',
+    summary: "Added the Daily Walkaround Check - your legally-required pre-trip inspection (tyres, lights, brakes, fluid leaks, mirrors and more), separate from trailer coupling. Each item is a quick pass/fail; marking a defect prompts for a photo and a short description. Shows up in History and the Manager Dashboard alongside your coupling checklists.",
+  },
+  {
     version: '1.19.0',
     date: '14 Sep 2026',
     summary: 'Sign Up now sets up your own separate company account (new "Company name" field) - foundation for this becoming a proper multi-fleet product, with each company\'s data kept completely separate from every other\'s.',

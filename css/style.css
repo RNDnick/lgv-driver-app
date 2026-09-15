@@ -11,6 +11,7 @@
   --success: #22c55e;
   --success-2: #0d9488;
   --accent-3: #ea580c;
+  --accent-4: #a855f7;
 }
 
 * { box-sizing: border-box; }
@@ -68,6 +69,7 @@ h3 { font-size: 1rem; color: var(--muted); margin-top: 24px; }
 .screen { display: flex; flex-direction: column; gap: 12px; }
 
 .muted { color: var(--muted); }
+.small { font-size: 0.8rem; }
 .muted.small { font-size: 0.8rem; }
 .version-tag { text-align: center; margin-top: 8px; }
 .landing-footer-tag { line-height: 1.5; margin-bottom: -34px; }
@@ -132,6 +134,7 @@ button {
 .tile-disconnect { border-color: var(--accent-2); }
 .tile-close-connect { border-color: var(--success-2); }
 .tile-close-disconnect { border-color: var(--accent-3); }
+.tile-walkaround { border-color: var(--accent-4); }
 
 .field {
   display: flex;
@@ -317,6 +320,12 @@ button {
   font-family: inherit;
   cursor: pointer;
 }
+
+.walkaround-item { display: flex; flex-direction: column; gap: 10px; cursor: default; }
+.walkaround-item-actions { display: flex; gap: 8px; }
+.walkaround-item-actions button { flex: 1; width: auto; padding: 10px; font-size: 0.9rem; }
+.walkaround-selected.walkaround-pass-btn { background: rgba(34, 197, 94, 0.2); border-color: var(--success); color: var(--success); }
+.walkaround-selected.walkaround-defect-btn { background: rgba(239, 68, 68, 0.2); border-color: var(--danger); color: var(--danger); }
 
 .warning {
   background: rgba(245, 158, 11, 0.15);

@@ -52,6 +52,8 @@ export async function flushOutbox() {
           await backend.syncJob(entry.payload, entry.photos);
         } else if (entry.kind === 'checklist') {
           await backend.syncChecklist(entry.payload, entry.photos);
+        } else if (entry.kind === 'walkaround') {
+          await backend.syncWalkaroundCheck(entry.payload, entry.photos);
         } else if (entry.kind === 'feedback') {
           await backend.syncFeedback(entry.payload);
         }
@@ -87,6 +89,11 @@ export async function getMergedChecklists() {
   return mergeWithPending('checklist', synced, 'completedAt');
 }
 
+export async function getMergedWalkaroundChecks() {
+  const synced = await backend.getMyWalkaroundChecks();
+  return mergeWithPending('walkaround', synced, 'completedAt');
+}
+
 function startOfToday() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -108,6 +115,25 @@ export async function getTodaysStepHashes(stepKey) {
     if ((entry.payload.completedAt || entry.createdAt) < todayMs) continue;
     const step = entry.payload.steps.find(s => s.key === stepKey);
     if (step?.photoHash) hashes.push(step.photoHash);
+  }
+  return hashes;
+}
+
+export async function getTodaysWalkaroundItemHashes(itemKey) {
+  const [synced, pending] = await Promise.all([
+    backend.getTodaysWalkaroundChecks(),
+    getPendingByKind('walkaround'),
+  ]);
+  const hashes = [];
+  for (const record of synced) {
+    const item = record.items.find(i => i.key === itemKey);
+    if (item?.photoHash) hashes.push(item.photoHash);
+  }
+  const todayMs = startOfToday();
+  for (const entry of pending) {
+    if ((entry.payload.completedAt || entry.createdAt) < todayMs) continue;
+    const item = entry.payload.items.find(i => i.key === itemKey);
+    if (item?.photoHash) hashes.push(item.photoHash);
   }
   return hashes;
 }

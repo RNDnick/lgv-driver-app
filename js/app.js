@@ -1,4 +1,5 @@
 import { renderChecklistFlow } from './checklist-view.js';
+import { renderWalkaroundFlow } from './walkaround-view.js';
 import { renderJobLog } from './joblog-view.js';
 import { renderHistory } from './history-view.js';
 import { renderChangelog } from './changelog-view.js';
@@ -48,6 +49,7 @@ async function renderView(view, params = {}) {
     if (view === 'disconnect') return (cleanup = await renderChecklistFlow(root, 'disconnect', { onExit: () => history.back() }));
     if (view === 'close-connect') return (cleanup = await renderChecklistFlow(root, 'close-connect', { onExit: () => history.back() }));
     if (view === 'close-disconnect') return (cleanup = await renderChecklistFlow(root, 'close-disconnect', { onExit: () => history.back() }));
+    if (view === 'walkaround') return (cleanup = await renderWalkaroundFlow(root, { onExit: () => history.back() }));
     if (view === 'joblog') return (cleanup = await renderJobLog(root, { onExit: () => history.back() }));
     if (view === 'history') return (cleanup = await renderHistory(root, { onExit: () => history.back(), initialRecordId: params.recordId }));
     if (view === 'changelog') return renderChangelog(root, { onExit: () => history.back() });
@@ -77,14 +79,18 @@ function resetToHome() {
 }
 
 async function renderHome() {
-  const [jobs, checklists, pendingCount, profile] = await Promise.all([
+  const [jobs, checklists, walkarounds, pendingCount, profile] = await Promise.all([
     sync.getMergedJobs(),
     sync.getMergedChecklists(),
+    sync.getMergedWalkaroundChecks(),
     sync.getPendingCount(),
     backend.getCurrentProfile(),
   ]);
   const openJobs = jobs.filter(j => j.status === 'open').length;
-  const recent = checklists.slice(0, RECENT_CHECKLISTS_COUNT);
+  const recent = [
+    ...checklists.map(r => ({ ...r, _kind: 'checklist' })),
+    ...walkarounds.map(r => ({ ...r, _kind: 'walkaround' })),
+  ].sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0)).slice(0, RECENT_CHECKLISTS_COUNT);
   const isManager = profile?.role === 'manager';
 
   root.innerHTML = `
@@ -115,6 +121,11 @@ async function renderHome() {
           <span>Close Uncoupling</span>
           <span class="tile-sub">${getMnemonic('close-disconnect')}</span>
         </button>
+        <button class="tile tile-walkaround" id="walkaroundBtn">
+          <span class="tile-icon">🚚</span>
+          <span>Daily Walkaround</span>
+          <span class="tile-sub">Pre-trip check</span>
+        </button>
         <button class="tile" id="joblogBtn">
           <span class="tile-icon">📋</span>
           <span>Job Log</span>
@@ -131,14 +142,14 @@ async function renderHome() {
         </button>` : ''}
       </div>
       ${recent.length ? `
-      <h3>Recent checklists</h3>
+      <h3>Recent activity</h3>
       <div class="list">
         ${recent.map(r => `
           <div class="list-item" data-id="${r.id}">
             <div class="list-item-main">
-              <strong>${getLabel(r.type)}</strong>
+              <strong>${r._kind === 'walkaround' ? 'Daily Walkaround Check' : getLabel(r.type)}</strong>
               ${r.pending ? '<span class="badge pending">Pending sync</span>' : ''}
-              <div class="muted small">${r.trailerReg || 'No reg'} · ${fmtDate(r.completedAt)}</div>
+              <div class="muted small">${(r._kind === 'walkaround' ? r.vehicleReg : r.trailerReg) || 'No reg'} · ${fmtDate(r.completedAt)}</div>
             </div>
           </div>
         `).join('')}
@@ -151,6 +162,7 @@ async function renderHome() {
   root.querySelector('#disconnectBtn').onclick = () => go('disconnect');
   root.querySelector('#closeConnectBtn').onclick = () => go('close-connect');
   root.querySelector('#closeDisconnectBtn').onclick = () => go('close-disconnect');
+  root.querySelector('#walkaroundBtn').onclick = () => go('walkaround');
   root.querySelector('#joblogBtn').onclick = () => go('joblog');
   root.querySelector('#historyBtn').onclick = () => go('history');
   root.querySelector('#managerBtn')?.addEventListener('click', () => go('manager'));

@@ -32,6 +32,20 @@ function checklistItemHtml(r) {
   `;
 }
 
+function walkaroundItemHtml(r) {
+  const defectCount = r.items.filter(i => i.status === 'defect').length;
+  return `
+    <div class="list-item" data-kind="walkaround" data-id="${r.id}">
+      <div class="list-item-main">
+        <strong>Daily Walkaround Check</strong>
+        ${defectCount ? `<span class="badge open">${defectCount} defect${defectCount > 1 ? 's' : ''}</span>` : '<span class="badge complete">all clear</span>'}
+        <div class="muted">${escapeHtml(r.vehicleReg || 'No reg')}</div>
+        <div class="muted small">${fmtDate(r.completedAt)}</div>
+      </div>
+    </div>
+  `;
+}
+
 function jobItemHtml(j) {
   return `
     <div class="list-item" data-kind="job" data-id="${j.id}">
@@ -61,8 +75,9 @@ function feedbackItemHtml(f) {
 // Log, not here.
 export async function renderManagerDashboard(root, { onExit } = {}) {
   const sub = createSubRouter('manager');
-  const [checklists, jobs, feedback] = await Promise.all([
+  const [checklists, walkarounds, jobs, feedback] = await Promise.all([
     backend.getAllChecklistsForManager(),
+    backend.getAllWalkaroundChecksForManager(),
     backend.getAllJobsForManager(),
     backend.getAllFeedback(),
   ]);
@@ -94,6 +109,12 @@ export async function renderManagerDashboard(root, { onExit } = {}) {
         renderChecklistDetail(checklists.find(r => r.id === el.dataset.id));
       };
     });
+    root.querySelectorAll('.list-item[data-kind="walkaround"]').forEach(el => {
+      el.onclick = () => {
+        sub.push({ screen: 'walkaround', id: el.dataset.id });
+        renderWalkaroundDetail(walkarounds.find(r => r.id === el.dataset.id));
+      };
+    });
     root.querySelectorAll('.list-item[data-kind="job"]').forEach(el => {
       el.onclick = () => {
         sub.push({ screen: 'job', id: el.dataset.id });
@@ -107,6 +128,7 @@ export async function renderManagerDashboard(root, { onExit } = {}) {
   function renderSections() {
     root.querySelector('#dashboardSections').innerHTML = `
       ${sectionHtml('Checklists', checklists, checklistItemHtml, 'No checklist records yet.')}
+      ${sectionHtml('Walkaround Checks', walkarounds, walkaroundItemHtml, 'No walkaround checks yet.')}
       ${sectionHtml('Jobs', jobs, jobItemHtml, 'No jobs logged yet.')}
       ${sectionHtml('Feedback', feedback, feedbackItemHtml, 'Nothing submitted yet.')}
     `;
@@ -162,6 +184,48 @@ export async function renderManagerDashboard(root, { onExit } = {}) {
     root.querySelector('#backBtn').onclick = () => history.back();
   }
 
+  async function renderWalkaroundDetail(record) {
+    const defects = record.items.filter(i => i.status === 'defect');
+    const defectPhotoUrls = await Promise.all(
+      defects.map(i => (i.photoPath ? backend.getPhotoUrl(i.photoPath) : null))
+    );
+    root.innerHTML = `
+      <div class="screen">
+        <h2>Daily Walkaround Check</h2>
+        <p class="muted">${escapeHtml(record.driverName)} · ${escapeHtml(record.vehicleReg || 'No vehicle reg')} · ${fmtDate(record.completedAt)}</p>
+        <div class="list">
+          ${record.items.map(i => `
+            <div class="list-item">
+              <div class="list-item-main">
+                <strong>${escapeHtml(i.label)}</strong>
+                ${i.status === 'defect' ? `<p class="error small">Defect: ${escapeHtml(i.description)}</p>` : '<span class="muted small">Pass</span>'}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        ${defects.length ? `
+        <h3>Defect photos</h3>
+        <div class="thumb-grid">
+          ${defects.map((d, i) => `
+            <div class="thumb">
+              <img src="${defectPhotoUrls[i] || ''}" alt="${d.label}" data-index="${i}" />
+              <span>${d.label}</span>
+            </div>
+          `).join('')}
+        </div>` : ''}
+        <button id="backBtn" class="btn-secondary">Back</button>
+      </div>
+    `;
+    root.querySelectorAll('.thumb img').forEach(img => {
+      if (!img.src) return;
+      img.onclick = () => {
+        const i = Number(img.dataset.index);
+        openLightbox(sub, { screen: 'walkaround', id: record.id }, defectPhotoUrls[i], defects[i].label);
+      };
+    });
+    root.querySelector('#backBtn').onclick = () => history.back();
+  }
+
   async function renderJobDetail(job) {
     const photoUrl = job.podPhotoPath ? await backend.getPhotoUrl(job.podPhotoPath) : null;
     root.innerHTML = `
@@ -190,6 +254,10 @@ export async function renderManagerDashboard(root, { onExit } = {}) {
     if (screen && screen.screen === 'checklist') {
       const record = checklists.find(r => r.id === screen.id);
       if (record) return renderChecklistDetail(record);
+    }
+    if (screen && screen.screen === 'walkaround') {
+      const record = walkarounds.find(r => r.id === screen.id);
+      if (record) return renderWalkaroundDetail(record);
     }
     if (screen && screen.screen === 'job') {
       const job = jobs.find(j => j.id === screen.id);

@@ -116,6 +116,18 @@ export async function getTodaysChecklists() {
   return data.map(fromChecklistRow);
 }
 
+export async function getTodaysWalkaroundChecks() {
+  const session = await getSession();
+  if (!session) return [];
+  const { data, error } = await supabase
+    .from('walkaround_checks')
+    .select('*')
+    .eq('driver_id', session.user.id)
+    .gte('completed_at', startOfToday());
+  if (error) throw error;
+  return data.map(fromWalkaroundRow);
+}
+
 // Resolves driver_id -> full_name for a manager-only "all drivers" fetch -
 // RLS lets a manager read every profile, so this is a bulk lookup rather
 // than N+1 queries per row.
@@ -244,6 +256,74 @@ export async function syncChecklist(record, photos = {}) {
   };
   const { error } = await supabase.from('checklists').upsert(row);
   if (error) throw new Error(`Saving checklist record failed: ${error.message}`);
+}
+
+function fromWalkaroundRow(row) {
+  return {
+    id: row.id,
+    vehicleReg: row.vehicle_reg,
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
+    items: row.items,
+  };
+}
+
+// Own records only - see the comment on getMyJobs above for why this isn't
+// just left to RLS.
+export async function getMyWalkaroundChecks() {
+  const session = await getSession();
+  if (!session) return [];
+  const { data, error } = await supabase
+    .from('walkaround_checks')
+    .select('*')
+    .eq('driver_id', session.user.id)
+    .order('completed_at', { ascending: false });
+  if (error) throw error;
+  return data.map(fromWalkaroundRow);
+}
+
+// Manager-only (see js/manager-view.js).
+export async function getAllWalkaroundChecksForManager() {
+  const { data, error } = await supabase.from('walkaround_checks').select('*').order('completed_at', { ascending: false });
+  if (error) throw error;
+  const names = await namesByDriverId(data.map(row => row.driver_id));
+  return data.map(row => ({ ...fromWalkaroundRow(row), driverName: names[row.driver_id] || 'Unknown driver' }));
+}
+
+export async function syncWalkaroundCheck(record, photos = {}) {
+  const session = await getSession();
+  if (!session) throw new Error('Not signed in');
+  const driverId = session.user.id;
+  const companyId = await getMyCompanyId();
+
+  const items = [];
+  for (const item of record.items) {
+    let photoPath = item.photoPath || null;
+    const blob = photos[item.key];
+    if (blob) {
+      photoPath = `${driverId}/walkarounds/${record.id}/${item.key}.jpg`;
+      const { error } = await supabase.storage
+        .from(BUCKET)
+        .upload(photoPath, blob, { upsert: true, contentType: 'image/jpeg' });
+      if (error) throw new Error(`Photo upload failed (${item.key}): ${error.message}`);
+    }
+    items.push({
+      key: item.key, label: item.label, status: item.status, description: item.description,
+      completedAt: item.completedAt, photoPath, photoHash: item.photoHash || null,
+    });
+  }
+
+  const row = {
+    id: record.id,
+    company_id: companyId,
+    driver_id: driverId,
+    vehicle_reg: record.vehicleReg,
+    started_at: record.startedAt,
+    completed_at: record.completedAt,
+    items,
+  };
+  const { error } = await supabase.from('walkaround_checks').upsert(row);
+  if (error) throw new Error(`Saving walkaround check failed: ${error.message}`);
 }
 
 export async function syncFeedback(feedback) {
